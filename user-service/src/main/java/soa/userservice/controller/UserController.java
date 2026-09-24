@@ -2,6 +2,7 @@ package soa.userservice.controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,25 +39,30 @@ public class UserController {
         return userService.getAllUsers();
     }
 
-    // READ BY ID
-    @GetMapping("/{id}")
-    public UserResponse getUserById(@PathVariable Long id) {
-        return userService.getUserById(id);
+    // READ BY userId
+    @GetMapping("/{userId}")
+    public UserResponse getUserById(@PathVariable String userId) {
+        return userService.getUserById(userId);
+    }
+
+    // EXISTS CHECK (used by other services via Feign)
+    @GetMapping("/{userId}/exists")
+    public ResponseEntity<Boolean> existsById(@PathVariable String userId) {
+        return ResponseEntity.ok(userService.existsById(userId));
     }
 
     // UPDATE
-    @PutMapping("/{id}")
+    @PutMapping("/{userId}")
     public UserResponse updateUser(
-            @PathVariable Long id,
+            @PathVariable String userId,
             @RequestBody UserUpdateRequest request) {
-
-        return userService.updateUser(id, request);
+        return userService.updateUser(userId, request);
     }
 
     // DELETE
-    @DeleteMapping("/{id}")
-    public String deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
+    @DeleteMapping("/{userId}")
+    public String deleteUser(@PathVariable String userId) {
+        userService.deleteUser(userId);
         return "User deleted successfully";
     }
 }

@@ -1,0 +1,70 @@
+# ===========================
+# Java / Maven
+# ===========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+
+# ===========================
+# IDE — IntelliJ IDEA
+# ===========================
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE — Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IDE — VS Code
+.vscode/
+
+# IDE — NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ===========================
+# Logs
+# ===========================
+*.log
+logs/
+
+# ===========================
+# Environment / Secrets
+# ===========================
+.env
+.env.*
+application-local.properties
+application-secret.properties
+application-prod.properties
+*.p12
+*.jks
+*.pem
+*.key
+
+# ===========================
+# OS files
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Metadata
+# ===========================
+.metadata/

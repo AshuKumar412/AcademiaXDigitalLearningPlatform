@@ -2,7 +2,8 @@ package soa.userservice.dto;
 
 public class UserResponse {
 
-    Long id;
+    // userId = studentId for STUDENT, instructorId for INSTRUCTOR
+    String userId;
     String name;
     String email;
     String phone;
@@ -11,12 +12,12 @@ public class UserResponse {
     String studentId;
     String instructorId;
 
-    public Long getId() {
-        return id;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getName() {

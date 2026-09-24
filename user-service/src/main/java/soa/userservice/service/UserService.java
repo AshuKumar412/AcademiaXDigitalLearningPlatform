@@ -23,73 +23,97 @@ public class UserService {
     // CREATE
     public UserResponse createUser(UserRequest request) {
 
-        User user = new User();
+        if (request.getRole() == null || request.getRole().isBlank()) {
+            throw new IllegalArgumentException("role is required (STUDENT or INSTRUCTOR)");
+        }
 
+        String userId;
+        if ("STUDENT".equalsIgnoreCase(request.getRole())) {
+            if (request.getStudentId() == null || request.getStudentId().isBlank()) {
+                throw new IllegalArgumentException("studentId is required for role STUDENT");
+            }
+            userId = request.getStudentId();
+        } else if ("INSTRUCTOR".equalsIgnoreCase(request.getRole())) {
+            if (request.getInstructorId() == null || request.getInstructorId().isBlank()) {
+                throw new IllegalArgumentException("instructorId is required for role INSTRUCTOR");
+            }
+            userId = request.getInstructorId();
+        } else {
+            throw new IllegalArgumentException("role must be STUDENT or INSTRUCTOR");
+        }
+
+        // Duplicate check
+        if (userRepository.existsById(userId)) {
+            throw new IllegalStateException("User with id '" + userId + "' already exists");
+        }
+
+        User user = new User();
+        user.setUserId(userId);
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole());
+        user.setRole(request.getRole().toUpperCase());
         user.setDepartment(request.getDepartment());
-        user.setStudentId(request.getStudentId());
-        user.setInstructorId(request.getInstructorId());
+
+        if ("STUDENT".equalsIgnoreCase(request.getRole())) {
+            user.setStudentId(request.getStudentId());
+            user.setInstructorId(null);
+        } else {
+            user.setInstructorId(request.getInstructorId());
+            user.setStudentId(null);
+        }
 
         User savedUser = userRepository.save(user);
-
         return convertToResponse(savedUser);
     }
 
     // READ ALL
     public List<UserResponse> getAllUsers() {
-
-        List<User> users = userRepository.findAll();
-
-        return users.stream()
+        return userRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .toList();
     }
 
-    // READ BY ID
-    public UserResponse getUserById(Long id) {
-
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
-
+    // READ BY userId
+    public UserResponse getUserById(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
         return convertToResponse(user);
     }
 
-    // UPDATE
-    public UserResponse updateUser(Long id, UserUpdateRequest request) {
+    // CHECK EXISTS (used by other services via endpoint)
+    public boolean existsById(String userId) {
+        return userRepository.existsById(userId);
+    }
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
+    // UPDATE
+    public UserResponse updateUser(String userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
         user.setName(request.getName());
         user.setPhone(request.getPhone());
         user.setDepartment(request.getDepartment());
 
-        User updatedUser = userRepository.save(user);
+        if ("STUDENT".equalsIgnoreCase(user.getRole()) && request.getStudentId() != null && !request.getStudentId().isBlank()) {
+            user.setStudentId(request.getStudentId());
+        } else if ("INSTRUCTOR".equalsIgnoreCase(user.getRole()) && request.getInstructorId() != null && !request.getInstructorId().isBlank()) {
+            user.setInstructorId(request.getInstructorId());
+        }
 
-        return convertToResponse(updatedUser);
+        return convertToResponse(userRepository.save(user));
     }
 
     // DELETE
-    public void deleteUser(Long id) {
-
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException("User not found"));
-
+    public void deleteUser(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
         userRepository.delete(user);
     }
 
-    // CONVERT USER TO RESPONSE
     private UserResponse convertToResponse(User user) {
-
         UserResponse response = new UserResponse();
-
-        response.setId(user.getId());
+        response.setUserId(user.getUserId());
         response.setName(user.getName());
         response.setEmail(user.getEmail());
         response.setPhone(user.getPhone());
@@ -97,7 +121,6 @@ public class UserService {
         response.setDepartment(user.getDepartment());
         response.setStudentId(user.getStudentId());
         response.setInstructorId(user.getInstructorId());
-
         return response;
     }
 }
