@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AcademiaX - Project Documentation</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 14mm 18mm 14mm;
+  }
+  
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #1e293b;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Headings */
+  h1 {
+    color: #0f2b5c;
+    font-size: 20pt;
+    border-bottom: 2.5px solid #0f2b5c;
+    padding-bottom: 6px;
+    margin-top: 24pt;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    color: #1e3a8a;
+    font-size: 14pt;
+    border-bottom: 1.5px solid #cbd5e1;
+    padding-bottom: 4px;
+    margin-top: 18pt;
+    margin-bottom: 10pt;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    color: #1d4ed8;
+    font-size: 12pt;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+    page-break-after: avoid;
+  }
+
+  h4 {
+    color: #334155;
+    font-size: 11pt;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+    page-break-after: avoid;
+  }
+
+  p, ul, ol {
+    margin-top: 4pt;
+    margin-bottom: 8pt;
+  }
+
+  li {
+    margin-bottom: 3pt;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10pt 0 14pt 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 6pt 8pt;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+
+  /* Code blocks */
+  pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 10pt 12pt;
+    border-radius: 5px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 9pt;
+    line-height: 1.45;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    margin: 8pt 0 12pt 0;
+    border: 1px solid #334155;
+  }
+
+  code {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 9.5pt;
+    background-color: #f1f5f9;
+    color: #0f2b5c;
+    padding: 1.5pt 3.5pt;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+  }
+
+  pre code {
+    background-color: transparent;
+    color: #f8fafc;
+    padding: 0;
+    border: none;
+    font-size: 8.8pt;
+  }
+
+  /* Blockquotes / Callouts */
+  blockquote {
+    margin: 8pt 0;
+    padding: 8pt 12pt;
+    border-left: 4px solid #2563eb;
+    background-color: #eff6ff;
+    color: #1e3a8a;
+    border-radius: 0 4px 4px 0;
+    page-break-inside: avoid;
+  }
+
+  blockquote p {
+    margin: 0;
+  }
+
+  hr {
+    border: 0;
+    height: 1px;
+    background: #cbd5e1;
+    margin: 16pt 0;
+  }
+
+  /* Viva Questions */
+  h3 + blockquote {
+    margin-top: 4pt;
+  }
+</style>
+</head>
+<body>
+<h1>AcademiaX – Higher Education Course Enrollment &amp; Tuition Processing System</h1>
+<h2>Comprehensive Academic Project Documentation</h2>
+<hr />
+<h2>1. Cover Page</h2>
+<pre><code>========================================================================================
+                                      ACADEMIAX
+             HIGHER EDUCATION COURSE ENROLLMENT &amp; TUITION PROCESSING SYSTEM
+========================================================================================
+
+    A Microservices-Based Enterprise System for Higher Education Administration
+
+    Academic Project Report Submitted in Partial Fulfillment of the Requirements 
+               for the Degree of Bachelor of Technology (B.Tech)
+                     in Computer Science and Engineering
+
+----------------------------------------------------------------------------------------
+    Submitted By:
+    Student Name : Praveen Kumar
+    Roll Number  : [Roll Number / Registration ID]
+    Branch/Class : B.Tech CSE (Final Year)
+
+    Under the Guidance of:
+    Faculty Name : [Faculty Advisor / Guide Name]
+    Designation  : [Assistant Professor / Professor]
+    Department   : Department of Computer Science &amp; Engineering
+
+    Institution Details:
+    College      : [University / College Name]
+    Academic Year: 2025 – 2026
+========================================================================================
+</code></pre>
+<hr />
+<h2>2. Abstract</h2>
+<p><strong>AcademiaX</strong> is an enterprise-grade distributed software system designed to automate academic administration in higher-education institutions. Traditional university management portals often suffer from performance degradation, single points of failure, and scalability bottlenecks during peak academic events such as semester course registration and tuition settlement.</p>
+<p>To solve these real-world challenges, AcademiaX decomposes administrative operations into seven autonomous microservices:</p>
+<ol>
+<li><strong>Eureka Server</strong> (<code>8761</code>) – Centralized service discovery registry.</li>
+<li><strong>API Gateway</strong> (<code>8080</code>) – Reverse proxy, client entry point, and perimeter JWT security enforcer.</li>
+<li><strong>Auth Service</strong> (<code>8081</code>) – BCrypt credential management and 7-day cryptographic JWT token generation.</li>
+<li><strong>User Service</strong> (<code>8082</code>) – Comprehensive student and faculty profile management.</li>
+<li><strong>Course Service</strong> (<code>8083</code>) – Course catalog definition and seat capacity allocation.</li>
+<li><strong>Enrollment Service</strong> (<code>8084</code>) – Core business orchestration engine validating course eligibility and seat limits.</li>
+<li><strong>Payment Service</strong> (<code>8085</code>) – Tuition fee invoice generation and transaction state management.</li>
+</ol>
+<p>Built with <strong>Java 25</strong>, <strong>Spring Boot 4.1.1</strong>, <strong>Spring Cloud 2025.1.3</strong>, and <strong>PostgreSQL 18</strong>, AcademiaX implements the <strong>Database-per-Service</strong> pattern, <strong>Declarative REST communication via Spring Cloud OpenFeign</strong>, stateless <strong>JSON Web Token (JWT)</strong> security, and client-side load-balanced routing using <strong>Spring Cloud Gateway Server Web MVC</strong>. The system ensures high availability, automated seat capacity enforcement, and seamless end-to-end tuition processing.</p>
+<hr />
+<h2>3. Problem Statement</h2>
+<p>Higher education institutions face operational and technical difficulties during registration windows:</p>
+<ol>
+<li><strong>Course Information Disorganization</strong>: Course offerings, credit units, and instructional faculty details are often managed in disconnected spreadsheets or legacy monolithic databases.</li>
+<li><strong>Enrollment Overbooking</strong>: High-demand courses encounter over-enrollment due to lack of real-time transactional concurrency checks on classroom capacity.</li>
+<li><strong>Enrollment Status Desynchronization</strong>: Students register without immediate validation of prerequisite availability or registration state tracking.</li>
+<li><strong>Disconnected Tuition Billing</strong>: Enrollment and student accounts are often separate silos, resulting in manual fee ledger entries, lost revenue, and reconciliation delays.</li>
+<li><strong>Monolithic Vulnerability &amp; Downtime</strong>: When thousands of students log in concurrently, monolithic architectures experience complete site-wide outages; a failure in billing knocks down course browsing and profile viewing.</li>
+<li><strong>Authentication &amp; Insecure Boundaries</strong>: Absence of a unified perimeter security mechanism leaves internal CRUD endpoints vulnerable to unauthorized data tampering.</li>
+</ol>
+<hr />
+<h2>4. Objectives</h2>
+<p>The primary objectives of the AcademiaX project are:</p>
+<ol>
+<li><strong>Decoupled Architecture</strong>: Structure the platform into modular, independently deployable microservices organized around distinct business domains.</li>
+<li><strong>Perimeter Security &amp; Stateless Authentication</strong>: Implement an API Gateway that strictly validates JSON Web Tokens (JWT) using HMAC-SHA256 signatures before forwarding requests to internal services.</li>
+<li><strong>Dynamic Service Discovery</strong>: Eliminate hardcoded IP addresses/ports using Netflix Eureka, allowing services to locate each other dynamically by logical service names.</li>
+<li><strong>Real-Time Capacity Enforcement</strong>: Ensure students cannot enroll in full courses by enforcing real-time transactional capacity checks through declarative Feign clients.</li>
+<li><strong>Automated Tuition Invoicing</strong>: Automatically initiate a <code>$500.00</code> pending tuition record in the Payment Service upon every successful course enrollment.</li>
+<li><strong>Isolated Persistence (Database-per-Service)</strong>: Provide dedicated PostgreSQL databases for Auth, User, Course, Enrollment, and Payment services to enforce data autonomy.</li>
+<li><strong>Standardized REST APIs</strong>: Expose predictable, RESTful endpoints across all services supporting complete CRUD operations.</li>
+</ol>
+<hr />
+<h2>5. Existing System &amp; Limitations</h2>
+<p>In a traditional academic management system (Monolithic Architecture):</p>
+<ul>
+<li><strong>Single Monolithic Codebase</strong>: All business logic (user profiles, course catalog, registration, and billing) lives in one giant application deployed as a single archive.</li>
+<li><strong>Shared Database Bottlenecks</strong>: A single centralized database handles all reads and writes. A long-running financial report or student roster export locks database tables, stalling student registrations.</li>
+<li><strong>Single Point of Failure (SPOF)</strong>: A bug or high memory usage in the payment module crashes the entire university portal.</li>
+<li><strong>Tight Coupling &amp; Slow Deployment</strong>: Changing a field in the User module requires retesting, recompiling, and redeploying the entire university portal.</li>
+</ul>
+<hr />
+<h2>6. Proposed System (AcademiaX Solution)</h2>
+<p>AcademiaX overcomes these limitations by adopting an <strong>Enterprise Microservices Architecture</strong>:</p>
+<pre><code>[ Traditional Monolith ]                      [ AcademiaX Microservices ]
++----------------------+                      +-------------------------------+
+| User Management      |                      | User Service       (Port 8082)|
+| Course Management    |   Transformed Into   | Course Service     (Port 8083)|
+| Course Registration  |  =================&gt;  | Enrollment Service (Port 8084)|
+| Payment &amp; Billing    |                      | Payment Service    (Port 8085)|
+| Shared Monolith DB   |                      | Auth Service       (Port 8081)|
++----------------------+                      +-------------------------------+
+                                                + Separate Databases for Each!
+</code></pre>
+<h3>Key Advantages:</h3>
+<ul>
+<li><strong>Resilience</strong>: If the Payment Service is temporarily offline or under heavy batch processing, students can still browse courses and view profiles.</li>
+<li><strong>Per-Service Scaling</strong>: The Enrollment and Gateway services can be scaled independently during registration week without scaling the rest of the application.</li>
+<li><strong>Domain Autonomy</strong>: Each team can develop, test, and package their microservice independently.</li>
+<li><strong>Robust Security Perimeter</strong>: All inbound requests are checked once at the Gateway, protecting backend services from unauthorized access.</li>
+</ul>
+<hr />
+<h2>7. System Architecture</h2>
+<h3>Architectural Overview Diagram</h3>
+<pre><code>+-----------------------------------------------------------------------------+
+|                             CLIENT / POSTMAN / BROWSER                      |
++-----------------------------------------------------------------------------+
+                                       |
+                   HTTP Requests to Port 8080 (Public Entry)
+                                       v
++-----------------------------------------------------------------------------+
+|                    API GATEWAY (Port 8080 - Spring Web MVC)                 |
+|  - Validates JWT Token (JwtAuthenticationFilter)                            |
+|  - Protects /users/**, /courses/**, /enrollments/**, /payments/**           |
+|  - Allows public access to /auth/login, /auth/register, /gateway, /status   |
+|  - Resolves service locations from Eureka Registry                          |
+|  - Client-Side Load Balancing via LoadBalancerFilterFunctions.lb()          |
++-----------------------------------------------------------------------------+
+                                       |
+                    Service Discovery via Eureka (Port 8761)
+                                       v
+         +----------------------------------------------------------+
+         |               EUREKA SERVER (Port 8761)                  |
+         |  - Service Discovery &amp; Health Heartbeat Registry         |
+         +----------------------------------------------------------+
+             /             |               |              |           \
+            /              |               |              |            \
+           v               v               v              v             v
+  +--------------+ +--------------+ +-------------+ +------------+ +------------+
+  | AUTH-SERVICE | | USER-SERVICE | |COURSE-SERVI.| |ENROLLMENT- | |PAYMENT-SER.|
+  |  Port 8081   | |  Port 8082   | |  Port 8083  | |SERVICE 8084| |  Port 8085  |
+  +--------------+ +--------------+ +-------------+ +------------+ +------------+
+         |                |                |              |  |           |
+         |                |                |    Feign     |  |   Feign   |
+         |                |                |&lt;-------------+  +----------&gt;|
+         |                |                | (Capacity Check) (Tuition)   |
+         v                v                v                             v
+  +--------------+ +--------------+ +-------------+ +------------+ +------------+
+  | academiax_   | | academiax_   | | academiax_  | | academiax_ | | academiax_ |
+  | auth_db      | | user_db      | | course_db   | | enroll_db  | | payment_db |
+  +--------------+ +--------------+ +-------------+ +------------+ +------------+
+</code></pre>
+<h3>Component Roles:</h3>
+<ol>
+<li><strong>Eureka Server (<code>8761</code>)</strong>: Acts as the phonebook for microservices. Every microservice registers its IP, port, and status (<code>UP</code>).</li>
+<li><strong>API Gateway (<code>8080</code>)</strong>: The single exterior front door. Evaluates every request's JWT header and routes to the appropriate service using Eureka service IDs (<code>lb(&quot;SERVICE-NAME&quot;)</code>).</li>
+<li><strong>Auth Service (<code>8081</code>)</strong>: Issues 7-day cryptographic JWTs upon successful username and BCrypt password verification.</li>
+<li><strong>User Service (<code>8082</code>)</strong>: Maintains institutional records of students and instructors.</li>
+<li><strong>Course Service (<code>8083</code>)</strong>: Maintains course names, assigned instructors, and strict seat quotas.</li>
+<li><strong>Enrollment Service (<code>8084</code>)</strong>: Coordinates student registrations. Uses OpenFeign to check Course capacity and triggers Payment fee generation.</li>
+<li><strong>Payment Service (<code>8085</code>)</strong>: Manages tuition records, fee balances, and payment statuses (<code>PENDING</code>, <code>COMPLETED</code>).</li>
+</ol>
+<hr />
+<h2>8. Microservice Responsibilities &amp; Database Table</h2>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Microservice</th>
+  <th style="text-align:center">Port</th>
+  <th style="text-align:left">Primary Responsibility</th>
+  <th style="text-align:left">Dedicated Database</th>
+  <th style="text-align:left">Primary Table</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><strong>Eureka Server</strong></td>
+  <td style="text-align:center"><code>8761</code></td>
+  <td style="text-align:left">Service registration and discovery registry</td>
+  <td style="text-align:left">None (In-Memory Registry)</td>
+  <td style="text-align:left">N/A</td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>API Gateway</strong></td>
+  <td style="text-align:center"><code>8080</code></td>
+  <td style="text-align:left">Reverse proxy, perimeter JWT filter, load balancing</td>
+  <td style="text-align:left">None (Stateless Router)</td>
+  <td style="text-align:left">N/A</td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>Auth Service</strong></td>
+  <td style="text-align:center"><code>8081</code></td>
+  <td style="text-align:left">User registration, BCrypt password hashing, JWT generation</td>
+  <td style="text-align:left"><code>academiax_auth_db</code></td>
+  <td style="text-align:left"><code>auth_users</code></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>User Service</strong></td>
+  <td style="text-align:center"><code>8082</code></td>
+  <td style="text-align:left">Academic profile CRUD (students, faculty, departments)</td>
+  <td style="text-align:left"><code>academiax_user_db</code></td>
+  <td style="text-align:left"><code>users</code></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>Course Service</strong></td>
+  <td style="text-align:center"><code>8083</code></td>
+  <td style="text-align:left">Course catalog, instructor assignments, capacity definitions</td>
+  <td style="text-align:left"><code>academiax_course_db</code></td>
+  <td style="text-align:left"><code>courses</code></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>Enrollment Service</strong></td>
+  <td style="text-align:center"><code>8084</code></td>
+  <td style="text-align:left">Enrollment business flow, Feign capacity check, tuition trigger</td>
+  <td style="text-align:left"><code>academiax_enrollment_db</code></td>
+  <td style="text-align:left"><code>enrollments</code></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>Payment Service</strong></td>
+  <td style="text-align:center"><code>8085</code></td>
+  <td style="text-align:left">Tuition invoice generation, payment status management</td>
+  <td style="text-align:left"><code>academiax_payment_db</code></td>
+  <td style="text-align:left"><code>payments</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>9. Eureka Service Discovery</h2>
+<h3>What is Eureka?</h3>
+<p>Netflix Eureka is a REST-based registry service designed for microservices architectures. In distributed systems, services may scale dynamically, run on arbitrary ports, or change IP addresses.</p>
+<h3>Why is Eureka Needed?</h3>
+<p>Without Eureka, the API Gateway and services would have to hardcode URLs like <code>http://192.168.1.50:8082/users</code>. If that IP or port changes, the entire system breaks. With Eureka:</p>
+<ul>
+<li>Every microservice announces itself by its application name (e.g., <code>USER-SERVICE</code>).</li>
+<li>The API Gateway simply routes to <code>lb(&quot;USER-SERVICE&quot;)</code>, delegating host/port lookup to Eureka.</li>
+</ul>
+<h3>Registration and Discovery Workflow:</h3>
+<ol>
+<li><strong>Startup</strong>: When <code>user-service</code> starts up, its Eureka Client contacts <code>http://localhost:8761/eureka</code> and registers <code>USER-SERVICE</code>.</li>
+<li><strong>Heartbeats</strong>: Every 30 seconds, running services send heartbeats to Eureka to keep their lease active.</li>
+<li><strong>Dashboard Meaning of &quot;UP&quot;</strong>: On the Eureka Web Console (<code>http://localhost:8761</code>), status <code>UP (1)</code> indicates that an instance is healthy, reachable, and ready to accept traffic.</li>
+</ol>
+<pre><code>Registered Applications on Eureka Dashboard:
+- API-GATEWAY        : 192.168.x.x:api-gateway:8080        (Status: UP)
+- AUTH-SERVICE       : 192.168.x.x:auth-service:8081       (Status: UP)
+- USER-SERVICE       : 192.168.x.x:user-service:8082       (Status: UP)
+- COURSE-SERVICE     : 192.168.x.x:course-service:8083     (Status: UP)
+- ENROLLMENT-SERVICE : 192.168.x.x:enrollment-service:8084 (Status: UP)
+- PAYMENT-SERVICE    : 192.168.x.x:payment-service:8085    (Status: UP)
+</code></pre>
+<hr />
+<h2>10. API Gateway</h2>
+<p>The API Gateway runs on port <code>8080</code> using <strong>Spring Cloud Gateway Server Web MVC</strong>.</p>
+<h3>Key Functions:</h3>
+<ol>
+<li><strong>Single Entry Point</strong>: All clients interact exclusively with <code>http://localhost:8080</code>.</li>
+<li><strong>Load-Balanced Routing</strong>: Evaluates the request path prefix and forwards requests via Spring Cloud LoadBalancer:<ul>
+<li>Path <code>/auth/**</code> $\rightarrow$ <code>AUTH-SERVICE</code></li>
+<li>Path <code>/users/**</code> $\rightarrow$ <code>USER-SERVICE</code></li>
+<li>Path <code>/courses/**</code> $\rightarrow$ <code>COURSE-SERVICE</code></li>
+<li>Path <code>/enrollments/**</code> $\rightarrow$ <code>ENROLLMENT-SERVICE</code></li>
+<li>Path <code>/payments/**</code> $\rightarrow$ <code>PAYMENT-SERVICE</code></li>
+</ul>
+</li>
+<li><strong>Perimeter Security Enforcer</strong>: Intercepts requests, validates incoming JWT tokens, and blocks unauthorized traffic before routing to downstream microservices.</li>
+<li><strong>Gateway Controller Endpoints</strong>: Exposes lightweight verification endpoints:<ul>
+<li><code>GET /gateway</code> $\rightarrow$ Returns <code>&quot;AcademiaX API Gateway is running&quot;</code></li>
+<li><code>GET /gateway/status</code> $\rightarrow$ Returns <code>&quot;AcademiaX API Gateway is healthy&quot;</code></li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2>11. JWT Authentication &amp; Security Model</h2>
+<p>AcademiaX implements stateless security using <strong>JSON Web Tokens (JWT)</strong> and <strong>Spring Security</strong>.</p>
+<h3>Anatomy of an AcademiaX JWT:</h3>
+<p>An AcademiaX token consists of three base64url-encoded parts separated by periods (<code>.</code>):</p>
+<ol>
+<li><strong>Header</strong>: Specifies the cryptographic algorithm (<code>HS256</code> / HMAC-SHA256) and token type (<code>JWT</code>).</li>
+<li><strong>Payload (Claims)</strong>:<ul>
+<li><code>sub</code>: The subject/username (e.g., <code>&quot;student_john&quot;</code>).</li>
+<li><code>role</code>: The authorized academic role (e.g., <code>&quot;STUDENT&quot;</code>, <code>&quot;ADMIN&quot;</code>).</li>
+<li><code>iat</code>: Issued-at epoch timestamp.</li>
+<li><code>exp</code>: Expiration epoch timestamp (<strong>7 Days</strong> validity = <code>604,800,000</code> ms).</li>
+</ul>
+</li>
+<li><strong>Signature</strong>: Cryptographic signature generated with the server secret key (<code>AcademiaXSecretKeyForJWTAuthentication2026</code>).</li>
+</ol>
+<pre><code>[ Header: {&quot;alg&quot;:&quot;HS256&quot;,&quot;typ&quot;:&quot;JWT&quot;} ] . 
+[ Payload: {&quot;sub&quot;:&quot;student101&quot;,&quot;role&quot;:&quot;STUDENT&quot;,&quot;iat&quot;:1790000000,&quot;exp&quot;:1790604800} ] . 
+[ Cryptographic HMAC-SHA256 Signature ]
+</code></pre>
+<h3>Complete Authentication Flow:</h3>
+<pre><code>+--------+                 +-------------+                   +---------------+
+| Client |                 | API Gateway |                   | Auth Service  |
++--------+                 +-------------+                   +---------------+
+    |                             |                                  |
+    | 1. POST /auth/login         |                                  |
+    |    (credentials in body)    |                                  |
+    |----------------------------&gt;|                                  |
+    |                             | 2. Forward to Auth Service       |
+    |                             |---------------------------------&gt;|
+    |                             |                                  | 3. Verify BCrypt
+    |                             |                                  |    hash &amp; build JWT
+    |                             | 4. Return token response         |
+    |                             |&lt;---------------------------------|
+    | 5. Return JSON with token   |                                  |
+    |&lt;----------------------------|                                  |
+    |                                                                |
+    | 6. GET /users (Header: &quot;Authorization: Bearer &lt;token&gt;&quot;)       |
+    |----------------------------&gt;|                                  |
+    |                             | 7. JwtAuthenticationFilter:      |
+    |                             |    - Verifies HMAC signature     |
+    |                             |    - Verifies expiration date    |
+    |                             |    - Populates SecurityContext   |
+    |                             | 8. If valid, routes to:          |
+    |                             |    USER-SERVICE                  |
+    | 9. HTTP 200 OK (Data)       |                                  |
+    |&lt;----------------------------|                                  |
+</code></pre>
+<h3>Token Enforcement Rules:</h3>
+<ul>
+<li><strong>Public Endpoints</strong> (No JWT required):<ul>
+<li><code>POST /auth/register</code></li>
+<li><code>POST /auth/login</code></li>
+<li><code>GET /actuator/health</code></li>
+<li><code>GET /gateway</code></li>
+<li><code>GET /gateway/status</code></li>
+</ul>
+</li>
+<li><strong>Protected Endpoints</strong> (Valid JWT required):<ul>
+<li><code>/users/**</code></li>
+<li><code>/courses/**</code></li>
+<li><code>/enrollments/**</code></li>
+<li><code>/payments/**</code></li>
+</ul>
+</li>
+</ul>
+<h3>Error Responses:</h3>
+<ul>
+<li><strong>Missing Token</strong>: <code>HTTP 401 Unauthorized</code> $\rightarrow$ <code>&quot;JWT token is required&quot;</code></li>
+<li><strong>Invalid Signature / Malformed Token</strong>: <code>HTTP 401 Unauthorized</code> $\rightarrow$ <code>&quot;Invalid or expired JWT token&quot;</code></li>
+<li><strong>Expired Token</strong>: <code>HTTP 401 Unauthorized</code> $\rightarrow$ <code>&quot;Invalid or expired JWT token&quot;</code></li>
+<li><strong>Valid Token</strong>: Request proceeds and returns requested data (<code>HTTP 200 OK</code>).</li>
+</ul>
+<hr />
+<h2>12. Database Design (Database-per-Service)</h2>
+<p>AcademiaX adheres strictly to the <strong>Database-per-Service</strong> architectural pattern. Instead of a single shared database, each microservice owns a dedicated PostgreSQL schema. This prevents tight data coupling and allows services to scale and evolve independently.</p>
+<pre><code>+-------------------------------------------------------------------------------+
+|                            POSTGRESQL 18 SERVER                               |
+|                                                                               |
+|  +--------------------+  +--------------------+  +-------------------------+  |
+|  | academiax_auth_db  |  | academiax_user_db  |  | academiax_course_db     |  |
+|  | Table: auth_users  |  | Table: users       |  | Table: courses          |  |
+|  +--------------------+  +--------------------+  +-------------------------+  |
+|                                                                               |
+|  +-------------------------+             +--------------------------+         |
+|  | academiax_enrollment_db |             | academiax_payment_db     |         |
+|  | Table: enrollments      |             | Table: payments          |         |
+|  +-------------------------+             +--------------------------+         |
++-------------------------------------------------------------------------------+
+</code></pre>
+<h3>Schema Definitions</h3>
+<h4>1. <code>auth_users</code> Table (<code>academiax_auth_db</code>)</h4>
+<p>Stores authentication identities and BCrypt-hashed credentials.</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Column</th>
+  <th style="text-align:left">Data Type</th>
+  <th style="text-align:left">Constraints</th>
+  <th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Primary Key, Auto-Increment</td>
+  <td style="text-align:left">Unique auth user identifier</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>username</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Unique, Not Null</td>
+  <td style="text-align:left">Unique login handle / username</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>password</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">BCrypt hashed password</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>role</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">User authority (<code>STUDENT</code>, <code>INSTRUCTOR</code>, <code>ADMIN</code>)</td>
+</tr>
+</tbody>
+</table>
+<h4>2. <code>users</code> Table (<code>academiax_user_db</code>)</h4>
+<p>Stores academic profile records.</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Column</th>
+  <th style="text-align:left">Data Type</th>
+  <th style="text-align:left">Constraints</th>
+  <th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Primary Key, Auto-Increment</td>
+  <td style="text-align:left">Unique user profile record ID</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>name</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Full legal name of student or faculty</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>email</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Unique, Not Null</td>
+  <td style="text-align:left">Institutional email address</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>phone</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Optional</td>
+  <td style="text-align:left">Contact telephone number</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>role</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Profile classification (<code>STUDENT</code> or <code>INSTRUCTOR</code>)</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>department</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Optional</td>
+  <td style="text-align:left">Department affiliation (e.g., &quot;Computer Science&quot;)</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>student_id</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Optional</td>
+  <td style="text-align:left">Official campus student identifier (e.g., &quot;STU-101&quot;)</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>instructor_id</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Optional</td>
+  <td style="text-align:left">Official campus instructor identifier</td>
+</tr>
+</tbody>
+</table>
+<h4>3. <code>courses</code> Table (<code>academiax_course_db</code>)</h4>
+<p>Stores the university course catalog.</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Column</th>
+  <th style="text-align:left">Data Type</th>
+  <th style="text-align:left">Constraints</th>
+  <th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Primary Key, Auto-Increment</td>
+  <td style="text-align:left">Unique course ID</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>title</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Official course title</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>instructor</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Assigned instructor name</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>capacity</code></td>
+  <td style="text-align:left"><code>INTEGER</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Maximum allowed enrollments for this course</td>
+</tr>
+</tbody>
+</table>
+<h4>4. <code>enrollments</code> Table (<code>academiax_enrollment_db</code>)</h4>
+<p>Maintains active course enrollments.</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Column</th>
+  <th style="text-align:left">Data Type</th>
+  <th style="text-align:left">Constraints</th>
+  <th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Primary Key, Auto-Increment</td>
+  <td style="text-align:left">Unique enrollment record ID</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>student_id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Foreign reference to student profile</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>course_id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Foreign reference to course catalog</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>status</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Status flag (<code>ENROLLED</code>, <code>CONFIRMED</code>, <code>CANCELLED</code>)</td>
+</tr>
+</tbody>
+</table>
+<h4>5. <code>payments</code> Table (<code>academiax_payment_db</code>)</h4>
+<p>Maintains student tuition ledgers.</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Column</th>
+  <th style="text-align:left">Data Type</th>
+  <th style="text-align:left">Constraints</th>
+  <th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Primary Key, Auto-Increment</td>
+  <td style="text-align:left">Unique payment invoice ID</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>enrollment_id</code></td>
+  <td style="text-align:left"><code>BIGINT</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Associated enrollment reference</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>amount</code></td>
+  <td style="text-align:left"><code>NUMERIC(10,2)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Tuition fee amount (default: <code>$500.00</code>)</td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>payment_status</code></td>
+  <td style="text-align:left"><code>VARCHAR(255)</code></td>
+  <td style="text-align:left">Not Null</td>
+  <td style="text-align:left">Payment state (<code>PENDING</code>, <code>COMPLETED</code>, <code>FAILED</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>13. User Service Details</h2>
+<p>The <strong>User Service</strong> manages institutional student and instructor profiles.</p>
+<ul>
+<li><strong>Internal Layering</strong>:<ul>
+<li><code>User</code>: JPA Entity mapped to table <code>users</code>.</li>
+<li><code>UserRepository</code>: Spring Data JPA repository interface extending <code>JpaRepository&lt;User, Long&gt;</code>.</li>
+<li><code>UserService</code>: Encapsulates business validation, mapping between entities and DTOs.</li>
+<li><code>UserController</code>: Exposes REST CRUD endpoints under <code>/users</code>.</li>
+<li><code>UserRequest</code> &amp; <code>UserResponse</code>: Data Transfer Objects isolating database representation from client contracts.</li>
+<li><code>GlobalExceptionHandler</code>: Intercepts <code>ResourceNotFoundException</code> and returns clean <code>404 Not Found</code>.</li>
+</ul>
+</li>
+</ul>
+<h3>Supported REST Endpoints:</h3>
+<ul>
+<li><code>POST /users</code> – Register student/faculty profile.</li>
+<li><code>GET /users</code> – List all profiles.</li>
+<li><code>GET /users/{id}</code> – Retrieve a specific profile by ID.</li>
+<li><code>PUT /users/{id}</code> – Update an existing profile.</li>
+<li><code>DELETE /users/{id}</code> – Remove a profile record.</li>
+</ul>
+<h4>Sample Input (<code>POST /users</code>):</h4>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;Jane Doe&quot;,
+  &quot;email&quot;: &quot;jane.doe@university.edu&quot;,
+  &quot;phone&quot;: &quot;+1-555-0199&quot;,
+  &quot;role&quot;: &quot;STUDENT&quot;,
+  &quot;department&quot;: &quot;Computer Science&quot;,
+  &quot;studentId&quot;: &quot;STU-8821&quot;
+}
+</code></pre>
+<h4>Sample Output (<code>HTTP 201 Created / 200 OK</code>):</h4>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;name&quot;: &quot;Jane Doe&quot;,
+  &quot;email&quot;: &quot;jane.doe@university.edu&quot;,
+  &quot;phone&quot;: &quot;+1-555-0199&quot;,
+  &quot;role&quot;: &quot;STUDENT&quot;,
+  &quot;department&quot;: &quot;Computer Science&quot;,
+  &quot;studentId&quot;: &quot;STU-8821&quot;,
+  &quot;instructorId&quot;: null
+}
+</code></pre>
+<hr />
+<h2>14. Course Service Details</h2>
+<p>The <strong>Course Service</strong> manages available academic courses, assigned faculty, and seat capacities.</p>
+<h3>Key Logic:</h3>
+<ul>
+<li>Defines courses along with a maximum seating <code>capacity</code>.</li>
+<li>Serves as the authoritative source of course availability for the Enrollment Service.</li>
+</ul>
+<h3>Supported REST Endpoints:</h3>
+<ul>
+<li><code>POST /courses</code> – Add a new course offering.</li>
+<li><code>GET /courses</code> – List all available courses.</li>
+<li><code>GET /courses/{id}</code> – Retrieve course details by ID.</li>
+<li><code>PUT /courses/{id}</code> – Update course details or capacity.</li>
+<li><code>DELETE /courses/{id}</code> – Remove a course.</li>
+</ul>
+<h4>Sample Input (<code>POST /courses</code>):</h4>
+<pre><code class="language-json">{
+  &quot;title&quot;: &quot;CS-401 Distributed Systems&quot;,
+  &quot;instructor&quot;: &quot;Dr. Alan Turing&quot;,
+  &quot;capacity&quot;: 30
+}
+</code></pre>
+<h4>Sample Output (<code>HTTP 200 OK</code>):</h4>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;title&quot;: &quot;CS-401 Distributed Systems&quot;,
+  &quot;instructor&quot;: &quot;Dr. Alan Turing&quot;,
+  &quot;capacity&quot;: 30
+}
+</code></pre>
+<hr />
+<h2>15. Enrollment Service (Core Business Workflow)</h2>
+<p>The <strong>Enrollment Service</strong> orchestrates the central academic registration workflow. It does not operate in isolation—it relies on declarative inter-service communication via <strong>Spring Cloud OpenFeign</strong>.</p>
+<pre><code>[ Client ]
+    |
+    v (POST /enrollments with Bearer JWT)
+[ API Gateway (8080) ]
+    |
+    v (Validated &amp; Forwarded)
+[ Enrollment Service (8084) ]
+    |
+    +---&gt; [ OpenFeign: CourseClient.getCourseById(courseId) ]
+    |           |
+    |           v
+    |     [ Course Service (8083) ]
+    |     - Checks if course exists
+    |     - Returns course details (including capacity)
+    |
+    +---&gt; [ EnrollmentRepository.countByCourseId(courseId) ]
+    |     - Counts current active enrollments
+    |     - IF (currentCount &gt;= course.capacity):
+    |           ABORT! Throw IllegalStateException (&quot;Course has reached maximum capacity&quot;)
+    |
+    +---&gt; [ Persist Enrollment Record: Status = &quot;ENROLLED&quot; ]
+    |
+    +---&gt; [ OpenFeign: PaymentClient.processPayment(...) ]
+                |
+                v
+          [ Payment Service (8085) ]
+          - Automatically creates Tuition Invoice
+          - Amount: $500.00 (Configurable)
+          - Status: &quot;PENDING&quot;
+</code></pre>
+<h3>Why OpenFeign?</h3>
+<p>Instead of writing verbose HTTP client code (<code>RestTemplate</code> or <code>HttpClient</code>) with URL concatenation and JSON serialization, OpenFeign allows developers to declare a Java interface with Spring MVC annotations:</p>
+<pre><code class="language-java">@FeignClient(name = &quot;COURSE-SERVICE&quot;)
+public interface CourseClient {
+    @GetMapping(&quot;/courses/{id}&quot;)
+    CourseClientResponse getCourseById(@PathVariable(&quot;id&quot;) Long id);
+}
+</code></pre>
+<p>Spring automatically creates the dynamic proxy and seamlessly integrates with Eureka for client-side load balancing.</p>
+<h4>Sample Input (<code>POST /enrollments</code>):</h4>
+<pre><code class="language-json">{
+  &quot;studentId&quot;: 1,
+  &quot;courseId&quot;: 1
+}
+</code></pre>
+<h4>Sample Output (<code>HTTP 200 OK</code>):</h4>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;studentId&quot;: 1,
+  &quot;courseId&quot;: 1,
+  &quot;status&quot;: &quot;ENROLLED&quot;
+}
+</code></pre>
+<hr />
+<h2>16. Payment Service Details</h2>
+<p>The <strong>Payment Service</strong> handles student financial ledgers and tuition invoicing.</p>
+<h3>Key Logic:</h3>
+<ul>
+<li>Automatically called by the Enrollment Service during course registration to initiate a tuition billing record.</li>
+<li>Configurable default tuition amount (<code>tuition.default-amount=500.00</code>).</li>
+<li>Supports financial updates (e.g., transition from <code>PENDING</code> to <code>COMPLETED</code> when paid).</li>
+</ul>
+<h3>Supported REST Endpoints:</h3>
+<ul>
+<li><code>POST /payments</code> – Create a payment record (called via Feign or directly).</li>
+<li><code>GET /payments</code> – Retrieve all payment invoices.</li>
+<li><code>GET /payments/{id}</code> – Retrieve invoice details by ID.</li>
+<li><code>PUT /payments/{id}</code> – Update payment status (e.g., mark as <code>COMPLETED</code>).</li>
+<li><code>DELETE /payments/{id}</code> – Void or delete a payment record.</li>
+</ul>
+<h4>Sample Input (<code>POST /payments</code>):</h4>
+<pre><code class="language-json">{
+  &quot;enrollmentId&quot;: 1,
+  &quot;amount&quot;: 500.00,
+  &quot;paymentStatus&quot;: &quot;PENDING&quot;
+}
+</code></pre>
+<h4>Sample Output (<code>HTTP 200 OK</code>):</h4>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;enrollmentId&quot;: 1,
+  &quot;amount&quot;: 500.00,
+  &quot;paymentStatus&quot;: &quot;PENDING&quot;
+}
+</code></pre>
+<hr />
+<h2>17. Inter-Service Communication (OpenFeign)</h2>
+<p>In AcademiaX, inter-service communication is strictly declarative:</p>
+<pre><code>+----------------------------------------------------------------------+
+|                         ENROLLMENT SERVICE                           |
+|                                                                      |
+|  @FeignClient(name = &quot;COURSE-SERVICE&quot;)                               |
+|  public interface CourseClient {                                     |
+|      @GetMapping(&quot;/courses/{id}&quot;)                                    |
+|      CourseClientResponse getCourseById(@PathVariable(&quot;id&quot;) Long id);|
+|  }                                                                   |
+|                                                                      |
+|  @FeignClient(name = &quot;PAYMENT-SERVICE&quot;)                              |
+|  public interface PaymentClient {                                    |
+|      @PostMapping(&quot;/payments&quot;)                                      |
+|      PaymentClientResponse processPayment(                           |
+|          @RequestBody PaymentClientRequest request);                 |
+|  }                                                                   |
++----------------------------------------------------------------------+
+               |                                       |
+     HTTP GET via Eureka                     HTTP POST via Eureka
+               v                                       v
+      +------------------+                   +-------------------+
+      |  COURSE-SERVICE  |                   |  PAYMENT-SERVICE  |
+      +------------------+                   +-------------------+
+</code></pre>
+<h3>Advantages of OpenFeign in AcademiaX:</h3>
+<ol>
+<li><strong>Zero Boilerplate</strong>: No need to manually manage HTTP connections or status code parsing.</li>
+<li><strong>Built-in Service Discovery</strong>: Direct integration with Eureka allows Feign to resolve <code>COURSE-SERVICE</code> to an active IP address automatically.</li>
+<li><strong>Resilience</strong>: If one instance of Course Service is down, the load balancer directs the Feign request to an active instance.</li>
+</ol>
+<hr />
+<h2>18. Complete End-to-End Business Flow</h2>
+<p>Here is a step-by-step trace of a complete student enrollment lifecycle:</p>
+<ol>
+<li><strong>User Registration</strong>:<ul>
+<li>A student registers credentials through the Gateway: <code>POST http://localhost:8080/auth/register</code>.</li>
+<li><code>Auth Service</code> hashes the password using BCrypt and saves the record in <code>academiax_auth_db</code>.</li>
+</ul>
+</li>
+<li><strong>User Login</strong>:<ul>
+<li>The student logs in: <code>POST http://localhost:8080/auth/login</code>.</li>
+<li><code>Auth Service</code> verifies credentials and issues a cryptographic JWT valid for 7 days.</li>
+</ul>
+</li>
+<li><strong>Profile Creation</strong>:<ul>
+<li>The student creates their academic profile: <code>POST http://localhost:8080/users</code> using <code>Authorization: Bearer &lt;JWT&gt;</code>.</li>
+</ul>
+</li>
+<li><strong>Course Catalog Definition</strong>:<ul>
+<li>An administrator creates a course: <code>POST http://localhost:8080/courses</code> with <code>capacity: 30</code>.</li>
+</ul>
+</li>
+<li><strong>Course Enrollment &amp; Validation</strong>:<ul>
+<li>The student submits an enrollment request: <code>POST http://localhost:8080/enrollments</code> with <code>courseId: 1</code>.</li>
+<li>The Gateway checks the JWT, extracts claims, and routes the request to <code>Enrollment Service</code>.</li>
+<li><code>Enrollment Service</code> queries <code>Course Service</code> via Feign: <code>Course 1 exists? Yes. Capacity? 30</code>.</li>
+<li><code>Enrollment Service</code> counts current enrollments in <code>academiax_enrollment_db</code>: <code>0 currently enrolled</code>.</li>
+<li>Seat check passes (<code>0 &lt; 30</code>).</li>
+<li>Enrollment record is created with status <code>ENROLLED</code>.</li>
+</ul>
+</li>
+<li><strong>Automatic Tuition Invoicing</strong>:<ul>
+<li><code>Enrollment Service</code> immediately calls <code>Payment Service</code> via Feign.</li>
+<li><code>Payment Service</code> records a tuition fee of <code>$500.00</code> in status <code>PENDING</code> linked to <code>enrollmentId: 1</code>.</li>
+</ul>
+</li>
+<li><strong>Tuition Settlement</strong>:<ul>
+<li>The student pays tuition: <code>PUT http://localhost:8080/payments/1</code> updating status to <code>COMPLETED</code>.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2>19. Complete API Testing (Postman Test Collection)</h2>
+<table>
+<thead>
+<tr>
+  <th style="text-align:center">#</th>
+  <th style="text-align:left">Test Scenario</th>
+  <th style="text-align:center">HTTP Method</th>
+  <th style="text-align:left">Endpoint URL</th>
+  <th style="text-align:left">Authorization Header</th>
+  <th style="text-align:left">Request Body (JSON)</th>
+  <th style="text-align:center">Expected Status</th>
+  <th style="text-align:left">Expected Output Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:center"><strong>1</strong></td>
+  <td style="text-align:left">Gateway Ping</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/gateway</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left"><code>&quot;AcademiaX API Gateway is running&quot;</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>2</strong></td>
+  <td style="text-align:left">Gateway Status</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/gateway/status</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left"><code>&quot;AcademiaX API Gateway is healthy&quot;</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>3</strong></td>
+  <td style="text-align:left">Actuator Health</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/actuator/health</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left"><code>{&quot;status&quot;:&quot;UP&quot;}</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>4</strong></td>
+  <td style="text-align:left">Register User</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/auth/register</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:left"><code>{&quot;username&quot;:&quot;alex&quot;,&quot;password&quot;:&quot;pass123&quot;,&quot;role&quot;:&quot;STUDENT&quot;}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Returns user info and generated JWT token</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>5</strong></td>
+  <td style="text-align:left">Login User</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/auth/login</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:left"><code>{&quot;username&quot;:&quot;alex&quot;,&quot;password&quot;:&quot;pass123&quot;}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Returns JWT valid for 7 days</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>6</strong></td>
+  <td style="text-align:left">Create Profile</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;name&quot;:&quot;Alex Rivers&quot;,&quot;email&quot;:&quot;alex@univ.edu&quot;,&quot;role&quot;:&quot;STUDENT&quot;,&quot;department&quot;:&quot;CSE&quot;}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">User profile created with assigned ID</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>7</strong></td>
+  <td style="text-align:left">Get All Users</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Array of all user profiles</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>8</strong></td>
+  <td style="text-align:left">Get User by ID</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users/1</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Profile details of User 1</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>9</strong></td>
+  <td style="text-align:left">Update Profile</td>
+  <td style="text-align:center"><code>PUT</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users/1</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;name&quot;:&quot;Alex R. Rivers&quot;,&quot;phone&quot;:&quot;+1-555-1234&quot;}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Updated profile record</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>10</strong></td>
+  <td style="text-align:left">Delete Profile</td>
+  <td style="text-align:center"><code>DELETE</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users/1</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left"><code>&quot;User deleted successfully&quot;</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>11</strong></td>
+  <td style="text-align:left">Create Course</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/courses</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;title&quot;:&quot;CS-302 Cloud Arch&quot;,&quot;instructor&quot;:&quot;Dr. Smith&quot;,&quot;capacity&quot;:1}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Course created with <code>capacity: 1</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>12</strong></td>
+  <td style="text-align:left">Get All Courses</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/courses</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">List of all course records</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>13</strong></td>
+  <td style="text-align:left">Successful Enrollment</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/enrollments</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;studentId&quot;:101,&quot;courseId&quot;:1}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Enrollment created; Pending tuition invoice generated</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>14</strong></td>
+  <td style="text-align:left">Capacity Rejection</td>
+  <td style="text-align:center"><code>POST</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/enrollments</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;studentId&quot;:102,&quot;courseId&quot;:1}</code></td>
+  <td style="text-align:center"><code>400 Bad Request</code></td>
+  <td style="text-align:left">Error: <code>&quot;Course has reached maximum capacity&quot;</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>15</strong></td>
+  <td style="text-align:left">View Invoices</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/payments</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">List containing auto-generated tuition payment</td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>16</strong></td>
+  <td style="text-align:left">Pay Tuition</td>
+  <td style="text-align:center"><code>PUT</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/payments/1</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left"><code>{&quot;paymentStatus&quot;:&quot;COMPLETED&quot;}</code></td>
+  <td style="text-align:center"><code>200 OK</code></td>
+  <td style="text-align:left">Status updated to <code>COMPLETED</code></td>
+</tr>
+<tr>
+  <td style="text-align:center"><strong>17</strong></td>
+  <td style="text-align:left">Invalid ID Check</td>
+  <td style="text-align:center"><code>GET</code></td>
+  <td style="text-align:left"><code>http://localhost:8080/users/99999</code></td>
+  <td style="text-align:left"><code>Bearer &lt;JWT&gt;</code></td>
+  <td style="text-align:left">None</td>
+  <td style="text-align:center"><code>404 Not Found</code></td>
+  <td style="text-align:left">Handled by GlobalExceptionHandler</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>20. Security Testing Matrix</h2>
+<p>Empirical verification of perimeter security enforcement at the Gateway:</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Protected Resource</th>
+  <th style="text-align:center">No JWT Header</th>
+  <th style="text-align:center">Invalid JWT (<code>Bearer invalid.xyz</code>)</th>
+  <th style="text-align:center">Expired JWT</th>
+  <th style="text-align:center">Valid JWT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><code>GET /users</code></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>200 OK</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>GET /courses</code></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>200 OK</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>GET /enrollments</code></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>200 OK</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><code>GET /payments</code></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>401 Unauthorized</strong></td>
+  <td style="text-align:center"><strong>200 OK</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>21. Error Handling Architecture</h2>
+<p>AcademiaX implements centralized exception handling via <code>@RestControllerAdvice</code> (<code>GlobalExceptionHandler</code>) in microservices:</p>
+<ol>
+<li><strong><code>401 Unauthorized</code> (Perimeter Security Failure)</strong>:<ul>
+<li>Trigger: Client omits <code>Authorization</code> header or supplies an invalid/expired token.</li>
+<li>Handled By: <code>JwtAuthenticationFilter</code> in API Gateway.</li>
+<li>Output: <code>&quot;JWT token is required&quot;</code> or <code>&quot;Invalid or expired JWT token&quot;</code>.</li>
+</ul>
+</li>
+<li><strong><code>404 Not Found</code> (Resource Missing)</strong>:<ul>
+<li>Trigger: Client requests an entity ID that does not exist in the database (e.g., <code>GET /users/99999</code>).</li>
+<li>Handled By: <code>GlobalExceptionHandler</code> intercepting <code>ResourceNotFoundException</code>.</li>
+<li>Output: <code>{&quot;timestamp&quot;: &quot;...&quot;, &quot;status&quot;: 404, &quot;error&quot;: &quot;Not Found&quot;, &quot;message&quot;: &quot;User not found with id: 99999&quot;}</code>.</li>
+</ul>
+</li>
+<li><strong><code>400 Bad Request</code> (Business Rule Violation / Capacity Exceeded)</strong>:<ul>
+<li>Trigger: Student attempts to enroll in a course whose active enrollment count equals or exceeds <code>capacity</code>.</li>
+<li>Handled By: <code>GlobalExceptionHandler</code> in <code>Enrollment Service</code> intercepting <code>IllegalStateException</code>.</li>
+<li>Output: <code>{&quot;timestamp&quot;: &quot;...&quot;, &quot;status&quot;: 400, &quot;error&quot;: &quot;Bad Request&quot;, &quot;message&quot;: &quot;Course has reached maximum capacity&quot;}</code>.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2>22. Running and Deploying the Project</h2>
+<h3>Prerequisites:</h3>
+<ul>
+<li><strong>JDK</strong>: Java 25 (e.g., JDK <code>25.0.4</code>) installed on system <code>PATH</code>.</li>
+<li><strong>Database</strong>: PostgreSQL 18 running on <code>localhost:5432</code> with username <code>postgres</code> and password <code>root</code>.</li>
+<li><strong>Databases Created</strong>:<ul>
+<li><code>academiax_auth_db</code></li>
+<li><code>academiax_user_db</code></li>
+<li><code>academiax_course_db</code></li>
+<li><code>academiax_enrollment_db</code></li>
+<li><code>academiax_payment_db</code></li>
+</ul>
+</li>
+</ul>
+<h3>Build All Services (Packaging as Executable WAR):</h3>
+<p>Run in each service directory (or via root):</p>
+<pre><code class="language-powershell">.\mvnw.cmd clean package -DskipTests
+</code></pre>
+<h3>Exact Startup Order:</h3>
+<p>Always start services in the following sequence to respect dependency constraints:</p>
+<pre><code class="language-powershell"># 1. Start Eureka Registry (Port 8761)
+cd eureka-server; java -jar target\eureka-server-0.0.1-SNAPSHOT.war
+
+# 2. Start Auth Service (Port 8081)
+cd auth-service; java -jar target\auth-service-0.0.1-SNAPSHOT.war
+
+# 3. Start User Service (Port 8082)
+cd user-service; java -jar target\user-service-0.0.1-SNAPSHOT.war
+
+# 4. Start Course Service (Port 8083)
+cd course-service; java -jar target\course-service-0.0.1-SNAPSHOT.war
+
+# 5. Start Payment Service (Port 8085)
+cd payment-service; java -jar target\payment-service-0.0.1-SNAPSHOT.war
+
+# 6. Start Enrollment Service (Port 8084)
+cd enrollment-service; java -jar target\enrollment-service-0.0.1-SNAPSHOT.war
+
+# 7. Start API Gateway (Port 8080)
+cd api-gateway; java -jar target\api-gateway-0.0.1-SNAPSHOT.war
+</code></pre>
+<hr />
+<h2>23. Eureka Service Verification</h2>
+<p>Once all services are started, open a browser and navigate to:</p>
+<pre><code>http://localhost:8761
+</code></pre>
+<h3>Expected Registered Instances:</h3>
+<p>The Eureka Dashboard section <strong>&quot;Instances currently registered with Eureka&quot;</strong> will display:</p>
+<ul>
+<li><strong><code>API-GATEWAY</code></strong> – Port <code>8080</code> – Status: <strong>UP</strong></li>
+<li><strong><code>AUTH-SERVICE</code></strong> – Port <code>8081</code> – Status: <strong>UP</strong></li>
+<li><strong><code>USER-SERVICE</code></strong> – Port <code>8082</code> – Status: <strong>UP</strong></li>
+<li><strong><code>COURSE-SERVICE</code></strong> – Port <code>8083</code> – Status: <strong>UP</strong></li>
+<li><strong><code>ENROLLMENT-SERVICE</code></strong> – Port <code>8084</code> – Status: <strong>UP</strong></li>
+<li><strong><code>PAYMENT-SERVICE</code></strong> – Port <code>8085</code> – Status: <strong>UP</strong></li>
+</ul>
+<hr />
+<h2>24. Empirical Verification Results</h2>
+<p>Every listed scenario has been empirically tested and verified against the running microservices:</p>
+<table>
+<thead>
+<tr>
+  <th style="text-align:left">Test Case</th>
+  <th style="text-align:left">Method &amp; URI</th>
+  <th style="text-align:left">Expected Result</th>
+  <th style="text-align:left">Actual Result</th>
+  <th style="text-align:center">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td style="text-align:left"><strong>TC-01</strong></td>
+  <td style="text-align:left"><code>GET /gateway</code></td>
+  <td style="text-align:left">200 OK; Gateway active message</td>
+  <td style="text-align:left"><code>&quot;AcademiaX API Gateway is running&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-02</strong></td>
+  <td style="text-align:left"><code>GET /gateway/status</code></td>
+  <td style="text-align:left">200 OK; Gateway healthy message</td>
+  <td style="text-align:left"><code>&quot;AcademiaX API Gateway is healthy&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-03</strong></td>
+  <td style="text-align:left"><code>GET /actuator/health</code></td>
+  <td style="text-align:left">200 OK; Status UP</td>
+  <td style="text-align:left"><code>{&quot;status&quot;:&quot;UP&quot;}</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-04</strong></td>
+  <td style="text-align:left"><code>POST /auth/register</code></td>
+  <td style="text-align:left">200 OK; User stored with BCrypt</td>
+  <td style="text-align:left">User created; Role assigned; JWT returned</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-05</strong></td>
+  <td style="text-align:left"><code>POST /auth/login</code></td>
+  <td style="text-align:left">200 OK; Valid 7-day JWT returned</td>
+  <td style="text-align:left">JWT generated; Expiration = 7 days ($604,800\text{s}$)</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-06</strong></td>
+  <td style="text-align:left"><code>GET /users</code> (No JWT)</td>
+  <td style="text-align:left">401 Unauthorized</td>
+  <td style="text-align:left">HTTP 401; <code>&quot;JWT token is required&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-07</strong></td>
+  <td style="text-align:left"><code>GET /users</code> (Invalid JWT)</td>
+  <td style="text-align:left">401 Unauthorized</td>
+  <td style="text-align:left">HTTP 401; <code>&quot;Invalid or expired JWT token&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-08</strong></td>
+  <td style="text-align:left"><code>GET /users</code> (Expired JWT)</td>
+  <td style="text-align:left">401 Unauthorized</td>
+  <td style="text-align:left">HTTP 401; <code>&quot;Invalid or expired JWT token&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-09</strong></td>
+  <td style="text-align:left"><code>GET /users</code> (Valid JWT)</td>
+  <td style="text-align:left">200 OK; User profile data</td>
+  <td style="text-align:left">HTTP 200; Returns user list</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-10</strong></td>
+  <td style="text-align:left"><code>GET /courses</code> (Valid JWT)</td>
+  <td style="text-align:left">200 OK; Course catalog</td>
+  <td style="text-align:left">HTTP 200; Returns course list</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-11</strong></td>
+  <td style="text-align:left"><code>POST /enrollments</code> (Valid)</td>
+  <td style="text-align:left">200 OK; Feign course &amp; payment</td>
+  <td style="text-align:left">Created enrollment &amp; auto-generated payment</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-12</strong></td>
+  <td style="text-align:left"><code>POST /enrollments</code> (Overcap)</td>
+  <td style="text-align:left">400 Bad Request; Capacity limit</td>
+  <td style="text-align:left">HTTP 400; <code>&quot;Course has reached maximum capacity&quot;</code></td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-13</strong></td>
+  <td style="text-align:left"><code>GET /payments</code> (Valid JWT)</td>
+  <td style="text-align:left">200 OK; Tuition invoices</td>
+  <td style="text-align:left">HTTP 200; Shows <code>$500.00</code> pending payment</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+<tr>
+  <td style="text-align:left"><strong>TC-14</strong></td>
+  <td style="text-align:left"><code>GET /users/99999</code> (Valid)</td>
+  <td style="text-align:left">404 Not Found</td>
+  <td style="text-align:left">HTTP 404; Handled cleanly by exception handler</td>
+  <td style="text-align:center"><strong>PASS</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>25. Practical Advantages of the Implemented Architecture</h2>
+<ol>
+<li><strong>High Fault Isolation</strong>: Failure in the payment gateway or user reporting modules does not crash the enrollment portal.</li>
+<li><strong>Independent Scalability</strong>: During course registration rush hours, multiple instances of <code>enrollment-service</code> and <code>api-gateway</code> can run concurrently without wasting hardware on idle services.</li>
+<li><strong>Decoupled Data Storage</strong>: Each service owns its schema. Schema modifications to course fields do not impact user or auth database tables.</li>
+<li><strong>Declarative Feign Calls</strong>: Simplified, maintainable inter-service communication without raw HTTP boilerplate.</li>
+<li><strong>Robust Perimeter Defense</strong>: Centralized JWT verification at the Gateway guarantees that downstream microservices receive only authenticated requests.</li>
+</ol>
+<hr />
+<h2>26. Current Project Limitations</h2>
+<p>To maintain academic rigor and transparency, the following design boundaries are noted:</p>
+<ol>
+<li><strong>Synchronous Inter-Service Calls</strong>: Enrollment uses synchronous HTTP via OpenFeign. If Course Service experiences latency, the enrollment call waits synchronously. (Can be enhanced with asynchronous messaging using Kafka/RabbitMQ).</li>
+<li><strong>Local JWT Verification</strong>: The Gateway verifies tokens using a shared symmetric HMAC secret key rather than an asymmetric public/private key pair (RSA/ECDSA).</li>
+<li><strong>No Distributed Transaction Rollback (Saga)</strong>: If payment creation fails after enrollment is persisted, manual reconciliation or a Saga orchestrator is needed to compensate the transaction.</li>
+</ol>
+<hr />
+<h2>27. Future Enhancements</h2>
+<p>The following features are identified as high-value roadmap items for subsequent versions:</p>
+<ul>
+<li><strong>Role-Based Access Control (RBAC)</strong>: Fine-grained method security (<code>@PreAuthorize(&quot;hasRole('ADMIN')&quot;)</code>) differentiating student self-service from faculty administrative actions.</li>
+<li><strong>Event-Driven Messaging</strong>: Introducing <strong>Apache Kafka</strong> or <strong>RabbitMQ</strong> for asynchronous event broadcasting (e.g., <code>EnrollmentCreatedEvent</code> triggers notifications and billing asynchronously).</li>
+<li><strong>External Payment Gateway</strong>: Integration with Stripe or PayPal SDK for real-time credit card and net-banking settlements.</li>
+<li><strong>Automated Notification Service</strong>: Microservice sending automated SMS and email confirmations upon successful registration.</li>
+<li><strong>Distributed Tracing &amp; Monitoring</strong>: Implementing <strong>Zipkin</strong> and <strong>Micrometer</strong> for end-to-end request latency tracing across microservice boundaries.</li>
+</ul>
+<hr />
+<h2>28. Conclusion</h2>
+<p><strong>AcademiaX</strong> successfully demonstrates a modern, enterprise-grade distributed solution for higher education course enrollment and tuition billing. By utilizing <strong>Java 25</strong>, <strong>Spring Boot 4.1.1</strong>, <strong>Spring Cloud 2025.1.3</strong>, and <strong>PostgreSQL 18</strong>, the project demonstrates how microservices solve the availability, scalability, and security shortcomings of legacy monolithic systems.</p>
+<p>Through real-time capacity checks via OpenFeign, perimeter security enforcement via Spring Cloud Gateway and 7-day JWTs, dynamic discovery via Netflix Eureka, and decoupled PostgreSQL schemas, AcademiaX delivers a scalable, resilient, and production-ready architectural foundation.</p>
+<hr />
+<h2>29. Faculty Viva / Demo Questions &amp; Answers</h2>
+<h3>Q1: Why did you choose a Microservices architecture instead of a Monolith?</h3>
+<blockquote>
+<p><strong>Answer</strong>: A monolith couples all features into a single codebase and database. During peak enrollment, high traffic on course registration can crash the entire monolith. Microservices provide fault isolation, independent scaling, and autonomous databases, ensuring critical operations remain available.</p>
+</blockquote>
+<h3>Q2: What is the role of the Eureka Server?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Eureka serves as the centralized service discovery registry. Microservices dynamically register their network location (IP and port) under a logical service name (e.g., <code>COURSE-SERVICE</code>). The API Gateway and Feign clients query Eureka to locate services without hardcoding hostnames.</p>
+</blockquote>
+<h3>Q3: Why is an API Gateway necessary?</h3>
+<blockquote>
+<p><strong>Answer</strong>: The Gateway acts as the single secure entry point (port <code>8080</code>) for all client applications. It centralizes routing, performs client-side load balancing, and enforces JWT security, preventing external clients from directly accessing internal microservice ports.</p>
+</blockquote>
+<h3>Q4: Why did you use JWT for authentication?</h3>
+<blockquote>
+<p><strong>Answer</strong>: JWT enables stateless authentication. The server does not need to store active session IDs in memory or a database. The token contains cryptographically signed claims (username, role, expiration) that the Gateway validates instantly using HMAC-SHA256.</p>
+</blockquote>
+<h3>Q5: Why does each microservice have its own separate database?</h3>
+<blockquote>
+<p><strong>Answer</strong>: To enforce the <strong>Database-per-Service</strong> pattern. This prevents loose coupling, eliminates table-locking interference between services, and ensures true microservice autonomy where each team owns its schema.</p>
+</blockquote>
+<h3>Q6: What is OpenFeign and where is it used in your project?</h3>
+<blockquote>
+<p><strong>Answer</strong>: OpenFeign is a declarative HTTP web service client. In our project, <code>Enrollment Service</code> uses Feign interfaces to synchronously call <code>Course Service</code> (to verify course validity and capacity) and <code>Payment Service</code> (to automatically generate a tuition invoice).</p>
+</blockquote>
+<h3>Q7: What happens behind the scenes when a student enrolls in a course?</h3>
+<blockquote>
+<p><strong>Answer</strong>: The client sends <code>POST /enrollments</code> with a JWT to the Gateway. The Gateway validates the token and forwards the request to <code>Enrollment Service</code>. <code>Enrollment Service</code> uses Feign to fetch course capacity from <code>Course Service</code>, verifies that current enrollments do not exceed the limit, persists the enrollment, and calls <code>Payment Service</code> via Feign to generate a pending <code>$500.00</code> tuition invoice.</p>
+</blockquote>
+<h3>Q8: How is course capacity checked to prevent overbooking?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Before saving an enrollment, <code>Enrollment Service</code> retrieves the course's <code>capacity</code> from <code>Course Service</code> via Feign and queries its local repository with <code>countByCourseId(courseId)</code>. If the current count is equal to or greater than the capacity, it throws an <code>IllegalStateException</code>, returning HTTP <code>400 Bad Request</code>.</p>
+</blockquote>
+<h3>Q9: How is a tuition payment record created?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Upon successful enrollment persistence, <code>Enrollment Service</code> invokes <code>PaymentClient.processPayment(...)</code> passing the <code>enrollmentId</code> and default tuition amount (<code>$500.00</code>). <code>Payment Service</code> records this as a new entry with status <code>PENDING</code>.</p>
+</blockquote>
+<h3>Q10: What happens if a client accesses <code>/users</code> without a JWT?</h3>
+<blockquote>
+<p><strong>Answer</strong>: The Gateway's <code>JwtAuthenticationFilter</code> intercepts the request, detects that the <code>Authorization</code> header is missing or lacks the <code>Bearer </code> prefix, immediately halts execution, and responds with HTTP <code>401 Unauthorized</code> and message <code>&quot;JWT token is required&quot;</code>.</p>
+</blockquote>
+<h3>Q11: What happens if a client passes a tampered or invalid JWT?</h3>
+<blockquote>
+<p><strong>Answer</strong>: The Gateway attempts to parse and verify the signature using the shared secret key. If the signature or structure is invalid, JJWT throws a <code>JwtException</code>, which is caught to return HTTP <code>401 Unauthorized</code> with message <code>&quot;Invalid or expired JWT token&quot;</code>.</p>
+</blockquote>
+<h3>Q12: What happens when an expired token is submitted?</h3>
+<blockquote>
+<p><strong>Answer</strong>: JJWT throws an <code>ExpiredJwtException</code>. The filter catches this exception and responds with HTTP <code>401 Unauthorized</code> (<code>&quot;Invalid or expired JWT token&quot;</code>).</p>
+</blockquote>
+<h3>Q13: Why are Data Transfer Objects (DTOs) used?</h3>
+<blockquote>
+<p><strong>Answer</strong>: DTOs separate internal database entities from external API contracts. This prevents over-posting attacks, avoids exposing sensitive database columns, and decouples internal table schema changes from client-facing JSON contracts.</p>
+</blockquote>
+<h3>Q14: What is the purpose of the Spring Data JPA Repository layer?</h3>
+<blockquote>
+<p><strong>Answer</strong>: It abstracts database operations by providing built-in implementations of standard CRUD queries (e.g., <code>save()</code>, <code>findById()</code>, <code>findAll()</code>) and allows custom derived query methods like <code>countByCourseId()</code> without writing raw SQL.</p>
+</blockquote>
+<h3>Q15: How are passwords stored securely in the Auth Service?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Passwords are never stored in plaintext. <code>Auth Service</code> configures <code>BCryptPasswordEncoder</code>, which applies a cryptographic adaptive one-way hashing algorithm with automatic salting before saving credentials to <code>academiax_auth_db</code>.</p>
+</blockquote>
+<h3>Q16: Why did you choose PostgreSQL 18?</h3>
+<blockquote>
+<p><strong>Answer</strong>: PostgreSQL is an enterprise-grade, ACID-compliant open-source relational database that provides strong data integrity, reliable transactions, and high concurrency for student and financial records.</p>
+</blockquote>
+<h3>Q17: What is Spring Cloud Gateway Server Web MVC?</h3>
+<blockquote>
+<p><strong>Answer</strong>: It is the modern synchronous Spring Cloud Gateway implementation built on Spring MVC and the Tomcat servlet container. It uses router functions (<code>GatewayRouterFunctions</code>) and standard servlet filters, making it straightforward to maintain and integrate with Spring Security.</p>
+</blockquote>
+<h3>Q18: What is client-side load balancing?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Instead of relying on a dedicated hardware load balancer, the client (or Gateway) queries Eureka for all available instances of a target service and uses Spring Cloud LoadBalancer to distribute requests evenly among healthy instances.</p>
+</blockquote>
+<h3>Q19: What is the configured expiration duration of the JWT in AcademiaX?</h3>
+<blockquote>
+<p><strong>Answer</strong>: Exactly <strong>7 days</strong> (<code>604,800,000</code> milliseconds), configured in <code>JwtService.java</code>.</p>
+</blockquote>
+<h3>Q20: Can you summarize the entire flow in one sentence?</h3>
+<blockquote>
+<p><strong>Answer</strong>: A client authenticates via Auth Service to receive a 7-day JWT, routes through API Gateway to Enrollment Service, which validates course capacity via Course Service and initiates tuition billing via Payment Service using OpenFeign, with all services discovered dynamically through Eureka and backed by dedicated PostgreSQL databases.</p>
+</blockquote>
+<hr />
+<h2>30. Final One-Page Quick Review Summary (Viva Cheat Sheet)</h2>
+<pre><code>========================================================================================
+                         ACADEMIAX - AT A GLANCE (QUICK REVIEW)
+========================================================================================
+
+1. CORE PURPOSE:
+   Enterprise Higher Education Course Enrollment &amp; Tuition Processing System
+   built on Spring Boot Microservices.
+
+2. PORTS &amp; SERVICES:
+   - 8761 : Eureka Server       (Service Registry &amp; Discovery)
+   - 8080 : API Gateway         (Perimeter JWT Security &amp; Reverse Proxy)
+   - 8081 : Auth Service        (BCrypt Passwords &amp; 7-Day JWT Token Generation)
+   - 8082 : User Service        (Student &amp; Instructor Profile CRUD)
+   - 8083 : Course Service      (Course Catalog &amp; Seat Capacity Quotas)
+   - 8084 : Enrollment Service  (Core Registration Orchestrator &amp; Capacity Checker)
+   - 8085 : Payment Service     (Tuition Invoicing: $500.00 Default Amount)
+
+3. DATABASES (PostgreSQL 18 - Database-per-Service):
+   - academiax_auth_db       -&gt; auth_users (id, username, password, role)
+   - academiax_user_db       -&gt; users (id, name, email, phone, role, department)
+   - academiax_course_db     -&gt; courses (id, title, instructor, capacity)
+   - academiax_enrollment_db -&gt; enrollments (id, student_id, course_id, status)
+   - academiax_payment_db    -&gt; payments (id, enrollment_id, amount, payment_status)
+
+4. SECURITY MODEL:
+   - Public Endpoints: POST /auth/register, POST /auth/login, GET /actuator/health,
+                       GET /gateway, GET /gateway/status
+   - Protected:        /users/**, /courses/**, /enrollments/**, /payments/**
+   - JWT Validity:     7 Days (604,800,000 ms) using HMAC-SHA256
+   - Behavior:         Missing, invalid, or expired tokens return HTTP 401 Unauthorized.
+
+5. KEY WORKFLOW (ENROLLMENT):
+   Client (JWT) -&gt; API Gateway (8080) -&gt; Enrollment Service (8084)
+   -&gt; Feign Call to Course Service (8083) to check if capacity is available
+   -&gt; If (enrolled &gt;= capacity) -&gt; 400 Bad Request (&quot;Course has reached maximum capacity&quot;)
+   -&gt; If seats available -&gt; Save Enrollment (&quot;ENROLLED&quot;)
+   -&gt; Feign Call to Payment Service (8085) -&gt; Save Payment ($500.00, &quot;PENDING&quot;)
+
+6. TECHNOLOGIES USED:
+   Java 25, Spring Boot 4.1.1, Spring Cloud 2025.1.3, Spring Cloud Gateway Web MVC,
+   Netflix Eureka, OpenFeign, Spring Security, JWT (JJWT), PostgreSQL 18, Maven (WAR).
+========================================================================================
+</code></pre>
+
+</body>
+</html>

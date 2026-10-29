@@ -25,7 +25,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    // CREATE (validates enrollment exists + prevents duplicate)
+    // CREATE (validates enrollment exists + enforces idempotency & prevents duplicate)
     @PostMapping
     public PaymentResponse createPayment(@RequestBody PaymentRequest request) {
         return paymentService.createPayment(request);
@@ -43,13 +43,25 @@ public class PaymentController {
         return paymentService.getPaymentById(id);
     }
 
-    // READ BY ENROLLMENT ID (find the payment for a specific enrollment)
+    // READ BY ENROLLMENT ID
     @GetMapping("/by-enrollment/{enrollmentId}")
     public PaymentResponse getPaymentByEnrollmentId(@PathVariable Long enrollmentId) {
         return paymentService.getPaymentByEnrollmentId(enrollmentId);
     }
 
-    // UPDATE BY PAYMENT ID 
+    // READ BY IDEMPOTENCY KEY
+    @GetMapping("/by-idempotency/{idempotencyKey}")
+    public PaymentResponse getPaymentByIdempotencyKey(@PathVariable String idempotencyKey) {
+        return paymentService.getPaymentByIdempotencyKey(idempotencyKey);
+    }
+
+    // RECONCILE PAYMENT
+    @PostMapping("/reconcile/{enrollmentId}")
+    public PaymentResponse reconcilePayment(@PathVariable Long enrollmentId) {
+        return paymentService.reconcilePayment(enrollmentId);
+    }
+
+    // UPDATE BY PAYMENT ID — update status (e.g. PENDING -> SUCCESS)
     @PutMapping("/{id}")
     public PaymentResponse updatePayment(
             @PathVariable Long id,

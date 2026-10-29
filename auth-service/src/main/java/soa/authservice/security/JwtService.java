@@ -9,12 +9,20 @@ import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class JwtService {
 
     @Value("${jwt.secret:AcademiaXSecretKeyForJWTAuthentication2026}")
     private String secret;
+
+    @PostConstruct
+    public void validateSecret() {
+        if (secret == null || secret.trim().isEmpty() || secret.length() < 32) {
+            throw new IllegalStateException("JWT signing secret must be configured and be at least 32 characters long");
+        }
+    }
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
@@ -24,6 +32,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(username)
+                .claim("userId", username)
                 .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 604800000L))

@@ -49,6 +49,7 @@ logs/
 # ===========================
 .env
 .env.*
+!.env.example
 application-local.properties
 application-secret.properties
 application-prod.properties

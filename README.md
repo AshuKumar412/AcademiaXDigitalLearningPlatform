@@ -1,211 +1,190 @@
 # AcademiaX – Higher Education Course Enrollment & Tuition Processing System
 
-A complete microservices-based digital learning platform built with **Java 25**, **Spring Boot 4**, **Spring Cloud**, **PostgreSQL**, and **JWT authentication**.
+A production-grade, microservices-based digital learning and tuition platform built with **Java 25**, **Spring Boot 4.1.1**, **Spring Cloud 2025.1.3**, **PostgreSQL 18**, and **JWT Authentication**.
+
+Featuring **Saga Transaction Orchestration**, **Atomic Concurrency Control**, **Payment Idempotency & Reconciliation**, and **Multi-Layer Role-Based Access Control (RBAC)**.
 
 ---
 
-## Architecture
+## Architecture Overview
 
 ```
-Client
-  └── API Gateway (8080)
-        ├── Auth Service (8081)
-        ├── User Service (8082)
-        ├── Course Service (8083)
-        ├── Enrollment Service (8084)
-        └── Payment Service (8085)
-
-Eureka Server (8761) — Service Discovery
-```
-
----
-
-## Microservices
-
-| Service | Port | Responsibility |
-|---|---|---|
-| eureka-server | 8761 | Service registry & discovery |
-| api-gateway | 8080 | JWT validation, routing |
-| auth-service | 8081 | Register, login, JWT generation |
-| user-service | 8082 | Student & Instructor management |
-| course-service | 8083 | Course management (validates instructor) |
-| enrollment-service | 8084 | Enrollment (validates student+course, auto-creates payment) |
-| payment-service | 8085 | Tuition payment management |
-
----
-
-## Technology Stack
-
-- **Java 25**
-- **Spring Boot 4.1.1**
-- **Spring Cloud 2025.1.3**
-- **Spring Security + JWT (JJWT)**
-- **Spring Data JPA / Hibernate**
-- **PostgreSQL 18**
-- **Netflix Eureka** (Service Discovery)
-- **Spring Cloud Gateway** (API Gateway)
-- **OpenFeign** (Service-to-Service HTTP)
-- **Maven** (Build tool)
-
----
-
-## Service-to-Service Validation
-
-```
-POST /courses       → validates instructorId exists   → User Service
-POST /enrollments   → validates studentId exists       → User Service
-                    → validates courseId exists        → Course Service
-                    → prevents duplicate enrollment
-                    → auto-creates PENDING payment     → Payment Service
-POST /payments      → validates enrollmentId exists    → Enrollment Service
-                    → prevents duplicate payment per enrollment
+                      [ Client (Browser / Mobile / Postman) ]
+                                         │
+                                         ▼
+                              ┌──────────────────────┐
+                              │  API Gateway (:8080) │ (JWT Validation, Header Sanitization & Routing)
+                              └──────────┬───────────┘
+                                         │
+       ┌───────────────┬─────────────────┼─────────────────┬─────────────────┐
+       ▼               ▼                 ▼                 ▼                 ▼
+┌──────────────┐┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Auth Service ││ User Service │  │Course Service│  │  Enrollment  │  │Payment Service│
+│   (:8081)    ││   (:8082)    │  │   (:8083)    │  │Service (:8084│  │   (:8085)    │
+└──────┬───────┘└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+       │               │                 │                 │                 │
+       └───────────────┴─────────────────┼─────────────────┴─────────────────┘
+                                         ▼
+                             ┌──────────────────────┐
+                             │ Eureka Server (:8761)│ (Service Discovery & Health Registry)
+                             └──────────────────────┘
+                                         ▲
+                                         │
+                             ┌──────────────────────┐
+                             │ PostgreSQL 18 DB     │ (Central ACID Shared DB: academiax_db)
+                             └──────────────────────┘
 ```
 
 ---
 
-## Database Schema (PostgreSQL)
+## Microservices Catalog
 
-Shared database: `academiax_db`
-
-Key tables:
-- `users` — `user_id VARCHAR PRIMARY KEY` (= studentId or instructorId, manually set)
-- `courses` — `id BIGINT PK`, `instructor_id VARCHAR` (references user_id)
-- `enrollments` — `id BIGINT PK`, UNIQUE(`student_id`, `course_id`)
-- `payments` — `id BIGINT PK`, UNIQUE(`enrollment_id`)
+| Service | Port | Primary Responsibilities |
+|---|---|---|
+| **eureka-server** | `8761` | Service registration, heartbeat monitoring, load-balanced discovery. |
+| **api-gateway** | `8080` | Edge routing, JWT signature verification, strips forged identity headers, injects trusted `X-User-Id` / `X-User-Role`. |
+| **auth-service** | `8081` | User registration (case-insensitive uniqueness), authentication, BCrypt password hashing, JWT token issuance. |
+| **user-service** | `8082` | Student and instructor profile lifecycle, self-profile privacy enforcement (`STUDENT`/`INSTRUCTOR`/`ADMIN`). |
+| **course-service** | `8083` | Course catalog, instructor assignment validation, atomic DB seat reservation & release, capacity constraints. |
+| **enrollment-service** | `8084` | Distributed Saga orchestrator, manages transitions (`PENDING_PAYMENT`, `ENROLLED`, `PAYMENT_FAILED`, `CANCELLED`), background reconciliation worker. |
+| **payment-service** | `8085` | Idempotent tuition payments, deterministic mock test modes (`SUCCESS`, `FAIL`, `TIMEOUT`, `UNKNOWN`), payment reconciliation, status lockdown. |
 
 ---
 
-## API Endpoints
+## Key Engineering Capabilities
 
-### Auth Service
-| Method | Path | Description |
-|---|---|---|
-| POST | /auth/register | Register a user |
-| POST | /auth/login | Login and get JWT |
+### 1. Distributed Saga Orchestration & Rollback
+Enrollment follows an orchestrated Saga state machine:
+1. **Validation**: Verifies authenticated student and target course.
+2. **Atomic Seat Reservation**: Atomically reserves a seat in Course Service (`UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = :id AND enrolled_count < capacity AND status = 'OPEN'`).
+3. **Pending Enrollment**: Persists enrollment in `PENDING_PAYMENT` with a unique idempotency key.
+4. **Idempotent Payment Initiation**: Invokes Payment Service with the idempotency key.
+   - **Payment Success**: Enrollment immediately transitions to `ENROLLED`.
+   - **Definitive Failure**: Enrollment transitions to `PAYMENT_FAILED` and triggers **compensating seat release** (`UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = :id AND enrolled_count > 0`).
+   - **Timeout / Unknown**: Enrollment remains in `PENDING_PAYMENT` with seat reserved. An automated background worker periodically reconciles pending payments and finalizes or rolls back state.
 
-### User Service
-| Method | Path | Description |
-|---|---|---|
-| POST | /users | Create student or instructor |
-| GET | /users | List all users |
-| GET | /users/{userId} | Get user by ID |
-| GET | /users/{userId}/exists | Existence check (used internally) |
-| PUT | /users/{userId} | Update user |
-| DELETE | /users/{userId} | Delete user |
-
-### Course Service
-| Method | Path | Description |
-|---|---|---|
-| POST | /courses | Create course (validates instructor) |
-| GET | /courses | List all courses |
-| GET | /courses/{id} | Get course by ID |
-| PUT | /courses/{id} | Update course |
-| DELETE | /courses/{id} | Delete course |
-
-### Enrollment Service
-| Method | Path | Description |
-|---|---|---|
-| POST | /enrollments | Enroll student (validates student+course) |
-| GET | /enrollments | List all enrollments |
-| GET | /enrollments/{id} | Get enrollment by ID |
-| GET | /enrollments/{id}/exists | Existence check (used internally) |
-| PUT | /enrollments/{id} | Update enrollment |
-| DELETE | /enrollments/{id} | Delete enrollment |
-
-### Payment Service
-| Method | Path | Description |
-|---|---|---|
-| POST | /payments | Create payment (validates enrollment, prevents duplicates) |
-| GET | /payments | List all payments |
-| GET | /payments/{id} | Get payment by payment ID |
-| GET | /payments/by-enrollment/{enrollmentId} | Find payment by enrollment |
-| PUT | /payments/{id} | Update payment status (e.g. PENDING → PAID) |
-| DELETE | /payments/{id} | Delete payment |
+### 2. Multi-Layer RBAC & Security Hardening
+- **Edge Header Sanitization**: API Gateway strips all client-supplied `X-User-Id` and `X-User-Role` headers before JWT validation, preventing spoofing.
+- **Downstream Verification**: Every downstream microservice independently verifies JWT signatures, ensuring requests directly accessing ports `8081`–`8085` cannot bypass authorization.
+- **Feign Identity Propagation**: Outgoing Feign requests carry `Authorization: Bearer <token>` and trusted identity headers across internal service boundaries.
+- **Role Permissions**:
+  - `STUDENT`: Can view courses, enroll themselves, view own enrollments, and check own payments.
+  - `INSTRUCTOR`: Can create courses assigned to them, manage own courses.
+  - `ADMIN`: Full management access across users, courses, enrollments, and payment reconciliations.
 
 ---
 
-## User Identifier Design
+## API Quick Reference
 
-| Role | ID Field | Example |
-|---|---|---|
-| STUDENT | `studentId` (manually supplied) | `"2400032678"` |
-| INSTRUCTOR | `instructorId` (manually supplied) | `"INS001"` |
+### Authentication (`/auth`)
+- `POST /auth/register` — Register student or instructor (`username`, `email`, `password`, `role`).
+- `POST /auth/login` — Authenticate and receive signed JWT.
 
-No auto-generated IDs for users. The `userId` in the database PK equals the manually supplied role-specific ID.
+### Users (`/users`)
+- `POST /users` — Create user record (`studentId` or `instructorId`).
+- `GET /users` — List all users (ADMIN only).
+- `GET /users/{userId}` — Get profile (Self or ADMIN).
+- `GET /users/{userId}/exists` — Service-to-service validation.
+- `PUT /users/{userId}` — Update user profile (Self or ADMIN).
+- `DELETE /users/{userId}` — Delete user (ADMIN only).
+
+### Courses (`/courses`)
+- `GET /courses` — List all courses (Authenticated users).
+- `GET /courses/{id}` — Get course details by ID.
+- `POST /courses` — Create course (INSTRUCTOR or ADMIN; validates instructor existence).
+- `PUT /courses/{id}` — Update course (Owning INSTRUCTOR or ADMIN).
+- `DELETE /courses/{id}` — Delete course (Owning INSTRUCTOR or ADMIN).
+- `POST /courses/{id}/reserve-seat` — Atomic seat reservation (Internal / Feign).
+- `POST /courses/{id}/release-seat` — Atomic seat compensation (Internal / Feign).
+
+### Enrollments (`/enrollments`)
+- `POST /enrollments` — Enroll student (Executes Saga workflow; auto-initiates payment).
+- `GET /enrollments` — List enrollments (STUDENT sees own; ADMIN sees all).
+- `GET /enrollments/{id}` — Get enrollment by ID (Student owner or ADMIN).
+- `GET /enrollments/{id}/exists` — Service-to-service validation.
+- `POST /enrollments/{id}/cancel` — Cancel enrollment and release reserved seat.
+- `POST /enrollments/{id}/reconcile` — Force reconciliation of pending payment.
+
+### Payments (`/payments`)
+- `POST /payments` — Idempotent payment creation (accepts optional header `X-Mock-Payment-Scenario: SUCCESS | FAIL | TIMEOUT | UNKNOWN`).
+- `GET /payments` — List payments (ADMIN only).
+- `GET /payments/{id}` — Get payment details (Owner or ADMIN).
+- `GET /payments/by-enrollment/{enrollmentId}` — Find payment by enrollment ID.
+- `POST /payments/reconcile/{enrollmentId}` — Reconcile pending payment status.
+- `PUT /payments/{id}` — Update payment status (ADMIN only, preventing client tampering).
 
 ---
 
-## Running Locally
+## Quickstart & Deployment
 
-### Prerequisites
-- Java 25
+### Option 1: Run with Docker Compose (Recommended)
+
+1. Copy `.env.example` to `.env` and configure secrets:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Build and launch all services:
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. Check service health:
+   ```bash
+   docker compose ps
+   ```
+
+4. View logs:
+   ```bash
+   docker compose logs -f
+   ```
+
+---
+
+### Option 2: Run Locally (Native)
+
+#### Prerequisites
+- Java 25 SDK
 - Maven 3.9+
-- PostgreSQL 18 (create database: `academiax_db`)
+- PostgreSQL 18 running locally with database `academiax_db`
 
-### Environment Variables (optional — defaults provided)
-```
-DB_URL=jdbc:postgresql://localhost:5432/academiax_db
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=YourJWTSecretKey
-```
-
-### Startup Order
+#### Service Startup Sequence
 ```bash
-# 1. Start Eureka Server
+# 1. Eureka Server (Wait ~10s for initialization)
 cd eureka-server && ./mvnw spring-boot:run
 
-# 2. Start remaining services (any order after Eureka)
-cd auth-service      && ./mvnw spring-boot:run
-cd user-service      && ./mvnw spring-boot:run
-cd course-service    && ./mvnw spring-boot:run
+# 2. Domain Microservices
+cd auth-service       && ./mvnw spring-boot:run
+cd user-service       && ./mvnw spring-boot:run
+cd course-service     && ./mvnw spring-boot:run
+cd payment-service    && ./mvnw spring-boot:run
 cd enrollment-service && ./mvnw spring-boot:run
-cd payment-service   && ./mvnw spring-boot:run
-cd api-gateway       && ./mvnw spring-boot:run
+
+# 3. Edge Gateway
+cd api-gateway        && ./mvnw spring-boot:run
 ```
 
-### Build All
+---
+
+## Automated Verification & Test Suite
+
+The project includes 53 comprehensive unit and integration tests across all microservices covering Saga rollbacks, atomic concurrency, idempotency, and RBAC authorization:
+
 ```bash
-# In each service directory:
-./mvnw package -DskipTests
+# Run test suite in all microservices
+cd auth-service       && ./mvnw test   # 6 tests passed
+cd api-gateway        && ./mvnw test   # 7 tests passed
+cd user-service       && ./mvnw test   # 5 tests passed
+cd course-service     && ./mvnw test   # 11 tests passed
+cd enrollment-service && ./mvnw test   # 13 tests passed
+cd payment-service    && ./mvnw test   # 10 tests passed
+cd eureka-server      && ./mvnw test   # 1 test passed
 ```
 
----
-
-## Typical Workflow
-
-```
-1. POST /auth/register   → register
-2. POST /auth/login      → get JWT
-3. POST /users           → create student (studentId = "2400032678")
-4. POST /users           → create instructor (instructorId = "INS001")
-5. POST /courses         → create course with instructorId = "INS001"
-6. POST /enrollments     → enroll student (auto-creates PENDING payment)
-7. GET  /payments/by-enrollment/{enrollmentId}  → find the payment
-8. PUT  /payments/{paymentId}                   → update status to PAID
-```
-
----
-
-## Error Codes
-
-| HTTP | Code | Meaning |
-|---|---|---|
-| 400 | BAD_REQUEST | Missing/invalid input |
-| 401 | Unauthorized | Missing or invalid JWT |
-| 404 | USER_NOT_FOUND | User not found |
-| 404 | COURSE_NOT_FOUND | Course not found |
-| 404 | ENROLLMENT_NOT_FOUND | Enrollment not found |
-| 404 | PAYMENT_NOT_FOUND | Payment not found |
-| 404 | INSTRUCTOR_NOT_FOUND | Instructor doesn't exist when creating course |
-| 404 | REFERENCE_NOT_FOUND | Student/course doesn't exist at enrollment |
-| 409 | CONFLICT | Duplicate user ID |
-| 409 | ALREADY_ENROLLED | Student already enrolled in that course |
-| 409 | DUPLICATE_PAYMENT | Payment already exists for this enrollment |
-| 503 | SERVICE_ERROR | Downstream service unavailable |
+**Total Tests**: 53 run, 53 passed, 0 failures, 0 errors.
 
 ---
 
 ## License
 
-Academic Project — AcademiaX Digital Learning Platform
+Academic & Higher Education Project — AcademiaX Digital Learning Platform.

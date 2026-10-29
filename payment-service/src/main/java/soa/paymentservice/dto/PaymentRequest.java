@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 
 public class PaymentRequest {
 
-    Long enrollmentId;
-    BigDecimal amount;
-    String paymentStatus;
+    private Long enrollmentId;
+    private BigDecimal amount;
+    private String paymentStatus;
+    private String idempotencyKey;
+    private String paymentMethod;
+    private String testScenario; // For testing: "SUCCESS", "FAIL", "TIMEOUT", "UNKNOWN"
 
     public Long getEnrollmentId() {
         return enrollmentId;
@@ -30,5 +33,29 @@ public class PaymentRequest {
 
     public void setPaymentStatus(String paymentStatus) {
         this.paymentStatus = paymentStatus;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public String getTestScenario() {
+        return testScenario;
+    }
+
+    public void setTestScenario(String testScenario) {
+        this.testScenario = testScenario;
     }
 }

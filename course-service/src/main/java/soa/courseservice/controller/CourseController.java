@@ -2,6 +2,7 @@ package soa.courseservice.controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,24 @@ public class CourseController {
     @GetMapping("/{id}")
     public CourseResponse getCourseById(@PathVariable Long id) {
         return courseService.getCourseById(id);
+    }
+
+    // READ BY INSTRUCTOR ID
+    @GetMapping("/by-instructor/{instructorId}")
+    public List<CourseResponse> getCoursesByInstructor(@PathVariable String instructorId) {
+        return courseService.getCoursesByInstructor(instructorId);
+    }
+
+    // ATOMIC SEAT RESERVATION
+    @PostMapping("/{id}/reserve-seat")
+    public ResponseEntity<Boolean> reserveSeat(@PathVariable Long id) {
+        return ResponseEntity.ok(courseService.reserveSeat(id));
+    }
+
+    // ATOMIC SEAT RELEASE (Saga Compensation)
+    @PostMapping("/{id}/release-seat")
+    public ResponseEntity<Boolean> releaseSeat(@PathVariable Long id) {
+        return ResponseEntity.ok(courseService.releaseSeat(id));
     }
 
     // UPDATE

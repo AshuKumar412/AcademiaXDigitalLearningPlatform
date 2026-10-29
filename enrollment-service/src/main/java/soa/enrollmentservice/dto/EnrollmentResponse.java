@@ -1,12 +1,18 @@
 package soa.enrollmentservice.dto;
 
+import java.time.LocalDateTime;
+
 public class EnrollmentResponse {
 
-    Long id;
-    // studentId is now a String (e.g. "2400032678") matching User service
-    String studentId;
-    Long courseId;
-    String status;
+    private Long id;
+    private String studentId;
+    private Long courseId;
+    private String status;
+    private boolean seatReserved;
+    private String idempotencyKey;
+    private String failureReason;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Long getId() {
         return id;
@@ -38,5 +44,45 @@ public class EnrollmentResponse {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public boolean isSeatReserved() {
+        return seatReserved;
+    }
+
+    public void setSeatReserved(boolean seatReserved) {
+        this.seatReserved = seatReserved;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
+    public void setFailureReason(String failureReason) {
+        this.failureReason = failureReason;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

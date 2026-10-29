@@ -1,5 +1,8 @@
 package soa.courseservice.model;
 
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,43 +15,75 @@ public class Course {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+    private Long id;
 
-    String title;
-    String instructor;   // instructor name (display)
-    String instructorId; // instructor userId from User Service
-    int capacity;
+    private String title;
+    private String instructor;   // instructor name (display)
+    private String instructorId; // instructor userId from User Service
+    private int capacity;
+
+    @Column(name = "enrolled_count", nullable = false)
+    private int enrolledCount = 0;
+
+    @Column(name = "status", nullable = false)
+    private String status = "OPEN"; // OPEN or CLOSED
+
+    @Column(name = "enrollment_deadline")
+    private LocalDateTime enrollmentDeadline;
 
     public Long getId() { 
-    	return id; 
-    	}
-    public void setId(Long id) { this.id = id; }
+        return id; 
+    }
+    public void setId(Long id) { 
+        this.id = id; 
+    }
 
     public String getTitle() { 
-    	return title;
+        return title; 
     }
     public void setTitle(String title) { 
-    	this.title = title; 
+        this.title = title; 
     }
 
     public String getInstructor() { 
-    	return instructor; 
+        return instructor; 
     }
     public void setInstructor(String instructor) { 
-    	this.instructor = instructor; 
+        this.instructor = instructor; 
     }
 
     public String getInstructorId() { 
-    	return instructorId; 
+        return instructorId; 
     }
     public void setInstructorId(String instructorId) { 
-    	this.instructorId = instructorId; 
+        this.instructorId = instructorId; 
     }
 
     public int getCapacity() { 
-    	return capacity; 
+        return capacity; 
     }
     public void setCapacity(int capacity) { 
-    	this.capacity = capacity; 
+        this.capacity = capacity; 
+    }
+
+    public int getEnrolledCount() {
+        return enrolledCount;
+    }
+    public void setEnrolledCount(int enrolledCount) {
+        this.enrolledCount = enrolledCount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getEnrollmentDeadline() {
+        return enrollmentDeadline;
+    }
+    public void setEnrollmentDeadline(LocalDateTime enrollmentDeadline) {
+        this.enrollmentDeadline = enrollmentDeadline;
     }
 }

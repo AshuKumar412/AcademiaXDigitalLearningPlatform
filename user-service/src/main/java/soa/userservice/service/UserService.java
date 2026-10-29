@@ -2,6 +2,9 @@ package soa.userservice.service;
 
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import soa.userservice.dto.UserRequest;
@@ -67,7 +70,7 @@ public class UserService {
         return convertToResponse(savedUser);
     }
 
-    // READ ALL
+    // READ ALL (Admin only via SecurityConfig)
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::convertToResponse)
@@ -76,6 +79,7 @@ public class UserService {
 
     // READ BY userId
     public UserResponse getUserById(String userId) {
+        checkUserOwnership(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
         return convertToResponse(user);
@@ -88,6 +92,7 @@ public class UserService {
 
     // UPDATE
     public UserResponse updateUser(String userId, UserUpdateRequest request) {
+        checkUserOwnership(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
@@ -106,9 +111,23 @@ public class UserService {
 
     // DELETE
     public void deleteUser(String userId) {
+        checkUserOwnership(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
         userRepository.delete(user);
+    }
+
+    private void checkUserOwnership(String userId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            if (!isAdmin) {
+                String currentUser = auth.getName();
+                if (currentUser != null && !currentUser.equalsIgnoreCase(userId)) {
+                    throw new AccessDeniedException("Users can only access their own profile");
+                }
+            }
+        }
     }
 
     private UserResponse convertToResponse(User user) {

@@ -2,9 +2,10 @@ package soa.authservice.dto;
 
 public class RegisterRequest {
 
-    String username;
-    String password;
-    String role;
+    private String username;
+    private String email;
+    private String password;
+    private String role;
 
     public String getUsername() {
         return username;
@@ -12,6 +13,14 @@ public class RegisterRequest {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {

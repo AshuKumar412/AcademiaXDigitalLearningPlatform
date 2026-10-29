@@ -1,10 +1,17 @@
 package soa.paymentservice.service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import soa.paymentservice.client.EnrollmentClient;
+import soa.paymentservice.dto.EnrollmentClientResponse;
 import soa.paymentservice.dto.PaymentRequest;
 import soa.paymentservice.dto.PaymentResponse;
 import soa.paymentservice.exception.PaymentNotFoundException;
@@ -19,18 +26,24 @@ public class PaymentService {
 
     public PaymentService(PaymentRepository paymentRepository, EnrollmentClient enrollmentClient) {
         this.paymentRepository = paymentRepository;
-        this.enrollmentClient = enrollmentClient;2
+        this.enrollmentClient = enrollmentClient;
     }
 
-    // CREATE - validates enrollment exists + prevents duplicate payment per enrollment
+    // CREATE - validates enrollment exists + enforces idempotency & prevents duplicate payment per enrollment
+    @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
 
-        // 1. enrollmentId is required
         if (request.getEnrollmentId() == null) {
             throw new IllegalArgumentException("enrollmentId is required");
         }
 
-        // 2. Validate enrollment exists via EnrollmentClient
+        if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+            Optional<Payment> existingByKey = paymentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            if (existingByKey.isPresent()) {
+                return convertToResponse(existingByKey.get());
+            }
+        }
+
         Boolean enrollmentExists;
         try {
             enrollmentExists = enrollmentClient.existsById(request.getEnrollmentId()).getBody();
@@ -38,28 +51,49 @@ public class PaymentService {
             throw new RuntimeException("Enrollment Service unavailable: " + e.getMessage());
         }
         if (enrollmentExists == null || !enrollmentExists) {
-            throw new IllegalArgumentException(
-                    "Enrollment '" + request.getEnrollmentId() + "' does not exist.");
+            throw new IllegalArgumentException("Enrollment '" + request.getEnrollmentId() + "' does not exist.");
         }
 
-        // 3. Check duplicate: one payment per enrollment only
-        if (paymentRepository.existsByEnrollmentId(request.getEnrollmentId())) {
+        Optional<Payment> existingByEnrollment = paymentRepository.findByEnrollmentId(request.getEnrollmentId());
+        if (existingByEnrollment.isPresent()) {
+            Payment existingPayment = existingByEnrollment.get();
+            if (request.getIdempotencyKey() != null && request.getIdempotencyKey().equals(existingPayment.getIdempotencyKey())) {
+                return convertToResponse(existingPayment);
+            }
             throw new IllegalStateException(
                     "A payment already exists for enrollment '" + request.getEnrollmentId()
                     + "'. Retrieve the existing payment and update its status instead.");
         }
 
+        String scenario = request.getTestScenario();
+        if ("TIMEOUT".equalsIgnoreCase(scenario)) {
+            throw new RuntimeException("Payment gateway timed out during processing for enrollment " + request.getEnrollmentId());
+        }
+
         Payment payment = new Payment();
         payment.setEnrollmentId(request.getEnrollmentId());
         payment.setAmount(request.getAmount());
-        payment.setPaymentStatus(
-                request.getPaymentStatus() != null ? request.getPaymentStatus() : "PENDING");
+        payment.setIdempotencyKey(request.getIdempotencyKey() != null ? request.getIdempotencyKey() : UUID.randomUUID().toString());
+        payment.setTransactionId("TXN-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 9000 + 1000));
+        payment.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CARD");
+
+        if ("FAIL".equalsIgnoreCase(scenario) || "PAYMENT_REJECTED".equalsIgnoreCase(scenario)) {
+            payment.setPaymentStatus("FAILED");
+        } else if ("UNKNOWN".equalsIgnoreCase(scenario)) {
+            payment.setPaymentStatus("UNKNOWN");
+        } else {
+            if (request.getPaymentStatus() != null && !request.getPaymentStatus().isBlank()) {
+                payment.setPaymentStatus(normalizeStatus(request.getPaymentStatus()));
+            } else {
+                payment.setPaymentStatus("SUCCESS");
+            }
+        }
 
         Payment savedPayment = paymentRepository.save(payment);
         return convertToResponse(savedPayment);
     }
 
-    // READ ALL
+    // READ ALL (Admin only via SecurityConfig)
     public List<PaymentResponse> getAllPayments() {
         return paymentRepository.findAll().stream()
                 .map(this::convertToResponse)
@@ -69,32 +103,58 @@ public class PaymentService {
     // READ BY PAYMENT ID
     public PaymentResponse getPaymentById(Long id) {
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException(
-                        "Payment not found with id: " + id));
+                .orElseThrow(() -> new PaymentNotFoundException("Payment not found with id: " + id));
+
+        checkPaymentOwnership(payment);
         return convertToResponse(payment);
     }
 
     // GET PAYMENT BY ENROLLMENT ID
     public PaymentResponse getPaymentByEnrollmentId(Long enrollmentId) {
         Payment payment = paymentRepository.findByEnrollmentId(enrollmentId)
-                .orElseThrow(() -> new PaymentNotFoundException(
-                        "No payment found for enrollment: " + enrollmentId));
+                .orElseThrow(() -> new PaymentNotFoundException("No payment found for enrollment: " + enrollmentId));
+
+        checkPaymentOwnership(payment);
         return convertToResponse(payment);
     }
 
-    // UPDATE - uses Payment ID, validates enrollment, prevents duplicate cross-assignment
+    // GET PAYMENT BY IDEMPOTENCY KEY
+    public PaymentResponse getPaymentByIdempotencyKey(String idempotencyKey) {
+        Payment payment = paymentRepository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() -> new PaymentNotFoundException("No payment found with idempotency key: " + idempotencyKey));
+
+        checkPaymentOwnership(payment);
+        return convertToResponse(payment);
+    }
+
+    // RECONCILE PAYMENT (Saga recovery for unknown outcomes)
+    @Transactional
+    public PaymentResponse reconcilePayment(Long enrollmentId) {
+        Payment payment = paymentRepository.findByEnrollmentId(enrollmentId)
+                .orElseThrow(() -> new PaymentNotFoundException("No payment found for enrollment: " + enrollmentId));
+
+        if ("UNKNOWN".equalsIgnoreCase(payment.getPaymentStatus()) || "PENDING".equalsIgnoreCase(payment.getPaymentStatus())) {
+            payment.setPaymentStatus("SUCCESS");
+            payment = paymentRepository.save(payment);
+        }
+        return convertToResponse(payment);
+    }
+
+    // UPDATE - restricted to administrative or verified transactions
+    @Transactional
     public PaymentResponse updatePayment(Long id, PaymentRequest request) {
 
-        // 1. Find existing payment by payment ID
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException(
-                        "Payment not found with id: " + id));
+                .orElseThrow(() -> new PaymentNotFoundException("Payment not found with id: " + id));
 
-        // 2. If enrollmentId is being changed, validate new enrollment exists
+        // Prevent non-admin clients from setting status to SUCCESS directly
+        if (!isCurrentUserAdmin() && request.getPaymentStatus() != null) {
+            throw new AccessDeniedException("Clients cannot directly mark payment status as SUCCESS. Payments must be processed through valid provider channels.");
+        }
+
         Long newEnrollmentId = request.getEnrollmentId();
         if (newEnrollmentId != null && !newEnrollmentId.equals(payment.getEnrollmentId())) {
 
-            // Validate new enrollment exists
             Boolean enrollmentExists;
             try {
                 enrollmentExists = enrollmentClient.existsById(newEnrollmentId).getBody();
@@ -102,26 +162,25 @@ public class PaymentService {
                 throw new RuntimeException("Enrollment Service unavailable: " + e.getMessage());
             }
             if (enrollmentExists == null || !enrollmentExists) {
-                throw new IllegalArgumentException(
-                        "Enrollment '" + newEnrollmentId + "' does not exist.");
+                throw new IllegalArgumentException("Enrollment '" + newEnrollmentId + "' does not exist.");
             }
 
-            // Prevent changing enrollment to one that already has a different payment
             if (paymentRepository.existsByEnrollmentId(newEnrollmentId)) {
                 throw new IllegalStateException(
-                        "Enrollment '" + newEnrollmentId
-                        + "' already has a payment. Cannot reassign this payment to it.");
+                        "Enrollment '" + newEnrollmentId + "' already has a payment. Cannot reassign this payment to it.");
             }
 
             payment.setEnrollmentId(newEnrollmentId);
         }
 
-        // 3. Apply other updates
         if (request.getAmount() != null) {
             payment.setAmount(request.getAmount());
         }
         if (request.getPaymentStatus() != null) {
-            payment.setPaymentStatus(request.getPaymentStatus());
+            payment.setPaymentStatus(normalizeStatus(request.getPaymentStatus()));
+        }
+        if (request.getPaymentMethod() != null) {
+            payment.setPaymentMethod(request.getPaymentMethod());
         }
 
         return convertToResponse(paymentRepository.save(payment));
@@ -130,9 +189,40 @@ public class PaymentService {
     // DELETE
     public void deletePayment(Long id) {
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException(
-                        "Payment not found with id: " + id));
+                .orElseThrow(() -> new PaymentNotFoundException("Payment not found with id: " + id));
         paymentRepository.delete(payment);
+    }
+
+    private void checkPaymentOwnership(Payment payment) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT"))) {
+            String currentStudent = auth.getName();
+            try {
+                EnrollmentClientResponse enr = enrollmentClient.getEnrollmentById(payment.getEnrollmentId());
+                if (enr != null && enr.getStudentId() != null && !enr.getStudentId().equalsIgnoreCase(currentStudent)) {
+                    throw new AccessDeniedException("Students can only access payment records for their own enrollments");
+                }
+            } catch (AccessDeniedException ade) {
+                throw ade;
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private boolean isCurrentUserAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            return auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        }
+        return false;
+    }
+
+    private String normalizeStatus(String status) {
+        if ("PAID".equalsIgnoreCase(status) || "SUCCESS".equalsIgnoreCase(status)) {
+            return "SUCCESS";
+        }
+        return status.toUpperCase();
     }
 
     private PaymentResponse convertToResponse(Payment payment) {
@@ -141,6 +231,11 @@ public class PaymentService {
         response.setEnrollmentId(payment.getEnrollmentId());
         response.setAmount(payment.getAmount());
         response.setPaymentStatus(payment.getPaymentStatus());
+        response.setIdempotencyKey(payment.getIdempotencyKey());
+        response.setTransactionId(payment.getTransactionId());
+        response.setPaymentMethod(payment.getPaymentMethod());
+        response.setCreatedAt(payment.getCreatedAt());
+        response.setUpdatedAt(payment.getUpdatedAt());
         return response;
     }
 }

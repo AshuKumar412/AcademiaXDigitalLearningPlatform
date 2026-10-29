@@ -2,10 +2,11 @@ package soa.enrollmentservice.dto;
 
 public class EnrollmentRequest {
 
-    // studentId is now a String (e.g. "2400032678") matching User service
-    String studentId;
-    Long courseId;
-    String status;
+    private String studentId;
+    private Long courseId;
+    private String status;
+    private String idempotencyKey;
+    private String testScenario; // For testing: "SUCCESS", "FAIL", "TIMEOUT", "UNKNOWN"
 
     public String getStudentId() {
         return studentId;
@@ -29,5 +30,21 @@ public class EnrollmentRequest {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getTestScenario() {
+        return testScenario;
+    }
+
+    public void setTestScenario(String testScenario) {
+        this.testScenario = testScenario;
     }
 }
