@@ -168,20 +168,20 @@ cd api-gateway        && ./mvnw spring-boot:run
 
 ## Automated Verification & Test Suite
 
-The project includes 53 comprehensive unit and integration tests across all microservices covering Saga rollbacks, atomic concurrency, idempotency, and RBAC authorization:
+The project includes 74 comprehensive unit and integration tests across all microservices covering Saga rollbacks, atomic concurrency, idempotency, user identity key uniqueness, and RBAC authorization:
 
 ```bash
 # Run test suite in all microservices
-cd auth-service       && ./mvnw test   # 6 tests passed
+cd auth-service       && ./mvnw test   # 16 tests passed
 cd api-gateway        && ./mvnw test   # 7 tests passed
-cd user-service       && ./mvnw test   # 5 tests passed
+cd user-service       && ./mvnw test   # 16 tests passed
 cd course-service     && ./mvnw test   # 11 tests passed
 cd enrollment-service && ./mvnw test   # 13 tests passed
 cd payment-service    && ./mvnw test   # 10 tests passed
 cd eureka-server      && ./mvnw test   # 1 test passed
 ```
 
-**Total Tests**: 53 run, 53 passed, 0 failures, 0 errors.
+**Total Tests**: 74 run, 74 passed, 0 failures, 0 errors.
 
 ---
 
