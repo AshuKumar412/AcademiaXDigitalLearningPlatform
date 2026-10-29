@@ -62,10 +62,24 @@ public class EnrollmentService {
         if (isCurrentUserStudent()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && !currentUser.isBlank()) {
-                if (studentId != null && !studentId.isBlank() && !studentId.equalsIgnoreCase(currentUser)) {
-                    throw new AccessDeniedException("Students can only enroll themselves");
+                if (studentId == null || studentId.isBlank()) {
+                    studentId = currentUser; // Bind to authoritative identity
+                } else if (!studentId.equalsIgnoreCase(currentUser)) {
+                    boolean isOwnId = false;
+                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                    if (auth != null && auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                        String claimUserId = claims.get("userId", String.class);
+                        Object claimId = claims.get("id");
+                        if (claimUserId != null && studentId.equalsIgnoreCase(claimUserId)) {
+                            isOwnId = true;
+                        } else if (claimId != null && studentId.equalsIgnoreCase(String.valueOf(claimId))) {
+                            isOwnId = true;
+                        }
+                    }
+                    if (!isOwnId) {
+                        throw new AccessDeniedException("Students can only enroll themselves");
+                    }
                 }
-                studentId = currentUser; // Bind to authoritative identity
             }
         }
 

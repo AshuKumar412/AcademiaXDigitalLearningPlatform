@@ -133,7 +133,20 @@ public class CourseService {
         if (isCurrentUserInstructor()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && course.getInstructorId() != null && !course.getInstructorId().equalsIgnoreCase(currentUser)) {
-                throw new AccessDeniedException("Instructors can only modify their own courses");
+                boolean isOwn = false;
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                    String claimUserId = claims.get("userId", String.class);
+                    Object claimId = claims.get("id");
+                    if (claimUserId != null && course.getInstructorId().equalsIgnoreCase(claimUserId)) {
+                        isOwn = true;
+                    } else if (claimId != null && course.getInstructorId().equalsIgnoreCase(String.valueOf(claimId))) {
+                        isOwn = true;
+                    }
+                }
+                if (!isOwn) {
+                    throw new AccessDeniedException("Instructors can only modify their own courses");
+                }
             }
         }
 
@@ -159,7 +172,20 @@ public class CourseService {
         if (isCurrentUserInstructor()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && course.getInstructorId() != null && !course.getInstructorId().equalsIgnoreCase(currentUser)) {
-                throw new AccessDeniedException("Instructors can only delete their own courses");
+                boolean isOwn = false;
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                    String claimUserId = claims.get("userId", String.class);
+                    Object claimId = claims.get("id");
+                    if (claimUserId != null && course.getInstructorId().equalsIgnoreCase(claimUserId)) {
+                        isOwn = true;
+                    } else if (claimId != null && course.getInstructorId().equalsIgnoreCase(String.valueOf(claimId))) {
+                        isOwn = true;
+                    }
+                }
+                if (!isOwn) {
+                    throw new AccessDeniedException("Instructors can only delete their own courses");
+                }
             }
         }
 

@@ -56,13 +56,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authorizationHeader == null) {
+            authorizationHeader = request.getHeader("authorization");
+        }
 
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+        if (authorizationHeader == null || !authorizationHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
             sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "JWT token is required");
             return;
         }
 
-        String token = authorizationHeader.substring(7);
+        String token = authorizationHeader.substring(7).trim();
 
         try {
             Claims claims = Jwts.parser()
@@ -72,15 +75,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .getPayload();
 
             String username = claims.getSubject();
-            String role = claims.get("role", String.class);
+            if (username == null || username.isBlank()) {
+                username = claims.get("userId", String.class);
+            }
+            if (username == null || username.isBlank()) {
+                username = claims.get("username", String.class);
+            }
 
             if (username == null || username.isBlank()) {
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT: missing subject claim");
                 return;
             }
 
+            String role = claims.get("role", String.class);
+            if (role == null || role.isBlank()) {
+                Object rolesObj = claims.get("roles");
+                if (rolesObj instanceof List<?> list && !list.isEmpty()) {
+                    role = list.get(0).toString();
+                } else if (rolesObj instanceof String str) {
+                    role = str;
+                }
+            }
+            if (role == null || role.isBlank()) {
+                role = claims.get("authorities", String.class);
+            }
+
+            if (role != null) {
+                role = role.trim().toUpperCase();
+                if (role.startsWith("ROLE_")) {
+                    role = role.substring(5);
+                }
+            }
+
             List<SimpleGrantedAuthority> authorities = (role != null && !role.isBlank())
-                    ? List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                    ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
                     : Collections.emptyList();
 
             UsernamePasswordAuthenticationToken authentication =
@@ -88,12 +116,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Wrap request: strip any client-supplied identity headers and inject authoritative claims
+            // Wrap request: strip any client-supplied forged identity headers and inject authoritative claims
             HeaderModifierRequestWrapper wrappedRequest = new HeaderModifierRequestWrapper(request);
             wrappedRequest.addHeader("X-User-Id", username);
             if (role != null) {
-                wrappedRequest.addHeader("X-User-Role", role.toUpperCase());
+                wrappedRequest.addHeader("X-User-Role", role);
             }
+            wrappedRequest.addHeader(HttpHeaders.AUTHORIZATION, authorizationHeader);
 
             filterChain.doFilter(wrappedRequest, response);
 
@@ -118,7 +147,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     // Custom wrapper that sanitizes external identity headers and injects trusted gateway headers
     public static class HeaderModifierRequestWrapper extends HttpServletRequestWrapper {
-        private final Map<String, String> customHeaders = new HashMap<>();
+        private final Map<String, String> customHeaders = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         public HeaderModifierRequestWrapper(HttpServletRequest request) {
             super(request);
@@ -142,7 +171,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         @Override
         public Enumeration<String> getHeaderNames() {
-            Set<String> names = new HashSet<>();
+            Set<String> names = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             Enumeration<String> originalNames = super.getHeaderNames();
             while (originalNames != null && originalNames.hasMoreElements()) {
                 String name = originalNames.nextElement();

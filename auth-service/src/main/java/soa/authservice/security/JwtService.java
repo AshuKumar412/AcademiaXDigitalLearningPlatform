@@ -32,17 +32,33 @@ public class JwtService {
     }
 
     public String generateToken(String username, String role) {
+        return generateToken(null, username, role);
+    }
+
+    public String generateToken(Long id, String username, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
-        return Jwts.builder()
+        String normalizedRole = (role != null && !role.isBlank()) ? role.trim().toUpperCase() : "STUDENT";
+        if (normalizedRole.startsWith("ROLE_")) {
+            normalizedRole = normalizedRole.substring(5);
+        }
+
+        var builder = Jwts.builder()
                 .subject(username)
                 .claim("userId", username)
-                .claim("role", role)
+                .claim("username", username)
+                .claim("role", normalizedRole)
+                .claim("roles", java.util.List.of(normalizedRole, "ROLE_" + normalizedRole))
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(getKey())
-                .compact();
+                .signWith(getKey());
+
+        if (id != null) {
+            builder.claim("id", id);
+        }
+
+        return builder.compact();
     }
 
     public long getJwtExpirationMs() {

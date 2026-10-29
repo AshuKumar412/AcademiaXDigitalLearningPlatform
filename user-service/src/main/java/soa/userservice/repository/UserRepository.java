@@ -26,4 +26,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByInstructorId(String instructorId);
 
     boolean existsByInstructorId(String instructorId);
+
+    Optional<User> findByNameIgnoreCase(String name);
 }

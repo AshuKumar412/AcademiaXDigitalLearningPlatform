@@ -40,11 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Check for trusted Gateway headers or Authorization Bearer token
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null) {
+            authHeader = request.getHeader("authorization");
+        }
         String gatewayUserId = request.getHeader("X-User-Id");
         String gatewayUserRole = request.getHeader("X-User-Role");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        if (authHeader != null && authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            String token = authHeader.substring(7).trim();
             try {
                 Claims claims = Jwts.parser()
                         .verifyWith(Keys.hmacShaKeyFor(secret.getBytes()))
@@ -53,14 +56,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .getPayload();
 
                 String username = claims.getSubject();
+                if (username == null || username.isBlank()) {
+                    username = claims.get("userId", String.class);
+                }
+                if (username == null || username.isBlank()) {
+                    username = claims.get("username", String.class);
+                }
+
                 String role = claims.get("role", String.class);
+                if (role == null || role.isBlank()) {
+                    Object rolesObj = claims.get("roles");
+                    if (rolesObj instanceof List<?> list && !list.isEmpty()) {
+                        role = list.get(0).toString();
+                    } else if (rolesObj instanceof String str) {
+                        role = str;
+                    }
+                }
+                if (role == null || role.isBlank()) {
+                    role = claims.get("authorities", String.class);
+                }
+
+                if (role != null) {
+                    role = role.trim().toUpperCase();
+                    if (role.startsWith("ROLE_")) {
+                        role = role.substring(5);
+                    }
+                }
 
                 List<SimpleGrantedAuthority> authorities = (role != null && !role.isBlank())
-                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
                         : Collections.emptyList();
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(username, null, authorities);
+                authentication.setDetails(claims);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
             } catch (Exception ex) {
@@ -71,9 +100,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
         } else if (gatewayUserId != null && !gatewayUserId.isBlank()) {
-            // Forwarded from Gateway with validated headers
-            List<SimpleGrantedAuthority> authorities = (gatewayUserRole != null && !gatewayUserRole.isBlank())
-                    ? List.of(new SimpleGrantedAuthority("ROLE_" + gatewayUserRole.toUpperCase()))
+            String role = gatewayUserRole != null ? gatewayUserRole.trim().toUpperCase() : null;
+            if (role != null && role.startsWith("ROLE_")) {
+                role = role.substring(5);
+            }
+            List<SimpleGrantedAuthority> authorities = (role != null && !role.isBlank())
+                    ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
                     : Collections.emptyList();
 
             UsernamePasswordAuthenticationToken authentication =

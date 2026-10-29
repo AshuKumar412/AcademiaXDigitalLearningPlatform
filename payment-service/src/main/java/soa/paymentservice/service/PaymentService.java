@@ -200,7 +200,19 @@ public class PaymentService {
             try {
                 EnrollmentClientResponse enr = enrollmentClient.getEnrollmentById(payment.getEnrollmentId());
                 if (enr != null && enr.getStudentId() != null && !enr.getStudentId().equalsIgnoreCase(currentStudent)) {
-                    throw new AccessDeniedException("Students can only access payment records for their own enrollments");
+                    boolean isOwn = false;
+                    if (auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                        String claimUserId = claims.get("userId", String.class);
+                        Object claimId = claims.get("id");
+                        if (claimUserId != null && enr.getStudentId().equalsIgnoreCase(claimUserId)) {
+                            isOwn = true;
+                        } else if (claimId != null && enr.getStudentId().equalsIgnoreCase(String.valueOf(claimId))) {
+                            isOwn = true;
+                        }
+                    }
+                    if (!isOwn) {
+                        throw new AccessDeniedException("Students can only access payment records for their own enrollments");
+                    }
                 }
             } catch (AccessDeniedException ade) {
                 throw ade;

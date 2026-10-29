@@ -164,7 +164,13 @@ public class UserService {
         }
 
         // 5. Try looking up by email
-        return userRepository.findByEmailIgnoreCase(trimmed);
+        Optional<User> byEmail = userRepository.findByEmailIgnoreCase(trimmed);
+        if (byEmail.isPresent()) {
+            return byEmail;
+        }
+
+        // 6. Try looking up by name
+        return userRepository.findByNameIgnoreCase(trimmed);
     }
 
     private void checkUserOwnership(String identifier) {
@@ -184,8 +190,22 @@ public class UserService {
                                 || (u.getUserId() != null && currentUser.equalsIgnoreCase(u.getUserId()))
                                 || (u.getStudentId() != null && currentUser.equalsIgnoreCase(u.getStudentId()))
                                 || (u.getInstructorId() != null && currentUser.equalsIgnoreCase(u.getInstructorId()))
-                                || (u.getEmail() != null && currentUser.equalsIgnoreCase(u.getEmail()))) {
+                                || (u.getEmail() != null && (currentUser.equalsIgnoreCase(u.getEmail()) || u.getEmail().toLowerCase().startsWith(currentUser.toLowerCase() + "@")))
+                                || (u.getName() != null && (currentUser.equalsIgnoreCase(u.getName())
+                                        || u.getName().replace(" ", ".").equalsIgnoreCase(currentUser)
+                                        || u.getName().replace(".", " ").equalsIgnoreCase(currentUser)))) {
                             return;
+                        }
+
+                        if (auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                            String claimUserId = claims.get("userId", String.class);
+                            String claimEmail = claims.get("email", String.class);
+                            if (claimUserId != null && (claimUserId.equalsIgnoreCase(String.valueOf(u.getId())) || claimUserId.equalsIgnoreCase(u.getUserId()))) {
+                                return;
+                            }
+                            if (claimEmail != null && u.getEmail() != null && claimEmail.equalsIgnoreCase(u.getEmail())) {
+                                return;
+                            }
                         }
                     }
                     throw new AccessDeniedException("Users can only access their own profile");
