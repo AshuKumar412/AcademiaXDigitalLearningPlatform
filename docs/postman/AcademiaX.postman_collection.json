@@ -449,6 +449,19 @@
       "item": [
         {
           "name": "Create Student Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Student profile created with 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Database-generated primary key ID returned', function () { pm.expect(data.id).to.be.a('number'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -463,7 +476,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice Student\",\n  \"email\": \"alice@test.com\",\n  \"phone\": \"+1-555-0100\",\n  \"role\": \"STUDENT\",\n  \"department\": \"Computer Science\",\n  \"studentId\": \"{{studentId}}\"\n}"
+              "raw": "{\n  \"name\": \"Alice Student\",\n  \"email\": \"alice_{{$randomInt}}@test.com\",\n  \"phone\": \"+1-555-0100\",\n  \"role\": \"STUDENT\",\n  \"department\": \"Computer Science\",\n  \"studentId\": \"{{studentId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users",
@@ -475,6 +488,19 @@
         },
         {
           "name": "Create Instructor Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Instructor profile created with 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Database-generated primary key ID returned', function () { pm.expect(data.id).to.be.a('number'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -489,7 +515,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dr. Robert Turing\",\n  \"email\": \"turing@test.com\",\n  \"phone\": \"+1-555-0101\",\n  \"role\": \"INSTRUCTOR\",\n  \"department\": \"Computer Science\",\n  \"instructorId\": \"{{instructorId}}\"\n}"
+              "raw": "{\n  \"name\": \"Dr. Robert Turing\",\n  \"email\": \"turing_{{$randomInt}}@test.com\",\n  \"phone\": \"+1-555-0101\",\n  \"role\": \"INSTRUCTOR\",\n  \"department\": \"Computer Science\",\n  \"instructorId\": \"{{instructorId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users",

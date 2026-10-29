@@ -52,7 +52,7 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
 
 | Method | Endpoint Path | Purpose | Required Role | Headers | Request Body | Status (Success/Failure) | Response Structure |
 |---|---|---|---|---|---|---|---|
-| `POST` | `/users` | Create a student or instructor user profile. | **Authenticated** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"name":"string","email":"string","phone":"string","role":"STUDENT\|INSTRUCTOR","department":"string","studentId":"string"}` | `200 OK` / `400`, `401`, `409` | `{"userId":"string","name":"string","email":"string","role":"string","department":"string"}` |
+| `POST` | `/users` | Create a student or instructor user profile with database-generated ID. | **Authenticated** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"name":"string","email":"string","phone":"string","role":"STUDENT\|INSTRUCTOR","department":"string","studentId":"string"}` | `200 OK` / `400`, `401`, `409` | `{"id":1,"userId":"1","name":"string","email":"string","role":"string","department":"string"}` |
 | `GET` | `/users` | List all user profiles. | **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403` | `[{"userId":"string","name":"string",...}]` |
 | `GET` | `/users/{userId}` | Get user profile by userId. | **Self (Own ID)** or **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403`, `404` | `{"userId":"string","name":"string","email":"string",...}` |
 | `GET` | `/users/{userId}/exists` | Check user existence (used internally by Course & Enrollment). | **Authenticated** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401` | `true` or `false` |

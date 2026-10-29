@@ -1,6 +1,9 @@
 package soa.userservice.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -9,15 +12,30 @@ import jakarta.persistence.Table;
 public class User {
 
     @Id
-    String userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    String name;
-    String email;
-    String phone;
-    String role;
-    String department;
-    String studentId;
-    String instructorId;
+    @Column(name = "user_id")
+    private String userId;
+
+    private String name;
+
+    @Column(unique = true)
+    private String email;
+
+    private String phone;
+    private String role;
+    private String department;
+    private String studentId;
+    private String instructorId;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getUserId() {
         return userId;
