@@ -43,7 +43,7 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
 | Method | Endpoint Path | Purpose | Required Role | Headers | Request Body | Status (Success/Failure) | Response Structure |
 |---|---|---|---|---|---|---|---|
 | `POST` | `/auth/register` | Register a new student or instructor. | **PUBLIC** | `Content-Type: application/json` | `{"username":"string","email":"string","password":"string","role":"STUDENT\|INSTRUCTOR\|ADMIN"}` | `200 OK` / `400`, `409` | `{"success":true,"message":"Registration successful. Please log in to continue.","userId":"string","username":"string","role":"string"}` *(No JWT token returned)* |
-| `POST` | `/auth/login` | Authenticate with username or email + password. Returns signed JWT. | **PUBLIC** | `Content-Type: application/json` | `{"username":"string","password":"string"}` | `200 OK` / `400`, `401` | `{"success":true,"message":"Login successful","accessToken":"<jwt>","tokenType":"Bearer","expiresIn":604800,"user":{"userId":"string","role":"string"}}` |
+| `POST` | `/auth/login` | Authenticate with username or email + password. Returns single signed JWT in `token`. | **PUBLIC** | `Content-Type: application/json` | `{"username":"string","password":"string"}` | `200 OK` / `400`, `401` | `{"token":"<jwt>","username":"string","role":"string"}` |
 
 ---
 
@@ -147,7 +147,7 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
     "password": "SecurePassword2026"
   }
   ```
-- **Verification**: HTTP 200. Returns signed JWT in `accessToken`. Postman script automatically captures this as `{{studentToken}}`.
+- **Verification**: HTTP 200. Returns signed JWT in single `token` field (no `accessToken` or `refreshToken`). Postman script automatically captures this as `{{studentToken}}` and `{{jwtToken}}`.
 
 ### D. Login with Email
 - **URL**: `POST http://localhost:8080/auth/login`

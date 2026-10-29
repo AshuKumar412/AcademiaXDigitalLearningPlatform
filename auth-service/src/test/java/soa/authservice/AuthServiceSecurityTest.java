@@ -154,7 +154,7 @@ class AuthServiceSecurityTest {
         assertThrows(IllegalArgumentException.class, () -> authService.register(invalidRole));
     }
 
-    // 5. Successful login returns valid signed JWT
+    // 5. Successful login returns valid signed JWT with single token field
     @Test
     void testLogin_RegisteredUser_WithCorrectPassword_ReturnsSignedJwt() {
         AuthUser user = new AuthUser();
@@ -173,14 +173,9 @@ class AuthServiceSecurityTest {
         LoginResponse response = authService.login(loginRequest);
 
         assertNotNull(response);
-        assertTrue(response.isSuccess());
-        assertEquals("Login successful", response.getMessage());
-        assertEquals("mock-signed-jwt-token", response.getAccessToken());
-        assertEquals("Bearer", response.getTokenType());
-        assertEquals(604800L, response.getExpiresIn());
-        assertNotNull(response.getUser());
-        assertEquals("student1", response.getUser().getUserId());
-        assertEquals("STUDENT", response.getUser().getRole());
+        assertEquals("mock-signed-jwt-token", response.getToken());
+        assertEquals("student1", response.getUsername());
+        assertEquals("STUDENT", response.getRole());
     }
 
     // 6. Login using email succeeds
@@ -204,9 +199,9 @@ class AuthServiceSecurityTest {
         LoginResponse response = authService.login(loginRequest);
 
         assertNotNull(response);
-        assertTrue(response.isSuccess());
-        assertEquals("instructor-jwt", response.getAccessToken());
-        assertEquals("INSTRUCTOR", response.getUser().getRole());
+        assertEquals("instructor-jwt", response.getToken());
+        assertEquals("instructor1", response.getUsername());
+        assertEquals("INSTRUCTOR", response.getRole());
     }
 
     // 7. Unregistered user cannot log in
@@ -291,15 +286,15 @@ class AuthServiceSecurityTest {
         studentReq.setUsername("student_user");
         studentReq.setPassword("pass");
         LoginResponse studentRes = authService.login(studentReq);
-        assertEquals("STUDENT", studentRes.getUser().getRole());
-        assertEquals("student-jwt", studentRes.getAccessToken());
+        assertEquals("STUDENT", studentRes.getRole());
+        assertEquals("student-jwt", studentRes.getToken());
 
         LoginRequest profReq = new LoginRequest();
         profReq.setUsername("prof_user");
         profReq.setPassword("pass");
         LoginResponse profRes = authService.login(profReq);
-        assertEquals("INSTRUCTOR", profRes.getUser().getRole());
-        assertEquals("instructor-jwt", profRes.getAccessToken());
+        assertEquals("INSTRUCTOR", profRes.getRole());
+        assertEquals("instructor-jwt", profRes.getToken());
     }
 
     // 11. Real JwtService validation: token contains required claims
@@ -316,5 +311,75 @@ class AuthServiceSecurityTest {
 
         String extractedUser = realJwtService.extractUsername(token);
         assertEquals("2400032678", extractedUser);
+    }
+
+    // 12. Single authentication token: Only one field named 'token', no accessToken or refreshToken
+    @Test
+    void testLogin_ReturnsOnlySingleTokenNamedToken_NoAccessTokenOrRefreshToken() {
+        AuthUser user = new AuthUser();
+        user.setId(3L);
+        user.setUsername("singletokenuser");
+        user.setPassword(passwordEncoder.encode("password123"));
+        user.setRole("STUDENT");
+
+        when(authUserRepository.findByUsernameIgnoreCase("singletokenuser")).thenReturn(Optional.of(user));
+        when(jwtService.generateToken("singletokenuser", "STUDENT")).thenReturn("single-jwt-token-xyz");
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("singletokenuser");
+        req.setPassword("password123");
+
+        LoginResponse res = authService.login(req);
+
+        // 1. Verify single token field exists and contains the JWT
+        assertNotNull(res.getToken());
+        assertEquals("single-jwt-token-xyz", res.getToken());
+
+        // 2. Verify no accessToken or refreshToken fields exist in LoginResponse class or superclass
+        for (Field f : LoginResponse.class.getDeclaredFields()) {
+            assertFalse(f.getName().equalsIgnoreCase("accessToken"), "LoginResponse must not contain accessToken field");
+            assertFalse(f.getName().equalsIgnoreCase("refreshToken"), "LoginResponse must not contain refreshToken field");
+        }
+        for (Field f : soa.authservice.dto.AuthResponse.class.getDeclaredFields()) {
+            assertFalse(f.getName().equalsIgnoreCase("accessToken"), "AuthResponse must not contain accessToken field");
+            assertFalse(f.getName().equalsIgnoreCase("refreshToken"), "AuthResponse must not contain refreshToken field");
+        }
+    }
+
+    // 13. Configurable JWT expiration via environment/properties
+    @Test
+    void testJwtExpiration_ConfigurableViaProperties() throws Exception {
+        JwtService customJwtService = new JwtService();
+        Field secretField = JwtService.class.getDeclaredField("secret");
+        secretField.setAccessible(true);
+        secretField.set(customJwtService, "AcademiaXSecretKeyForJWTAuthentication2026");
+
+        Field expField = JwtService.class.getDeclaredField("jwtExpirationMs");
+        expField.setAccessible(true);
+        expField.setLong(customJwtService, 3600000L); // 1 hour configured
+
+        assertEquals(3600000L, customJwtService.getJwtExpirationMs());
+
+        String token = customJwtService.generateToken("user1", "STUDENT");
+        assertNotNull(token);
+        assertEquals("user1", customJwtService.extractUsername(token));
+    }
+
+    // 14. Expired token rejection
+    @Test
+    void testJwtExpiredToken_ThrowsExpiredJwtException() throws Exception {
+        JwtService shortLivedJwtService = new JwtService();
+        Field secretField = JwtService.class.getDeclaredField("secret");
+        secretField.setAccessible(true);
+        secretField.set(shortLivedJwtService, "AcademiaXSecretKeyForJWTAuthentication2026");
+
+        Field expField = JwtService.class.getDeclaredField("jwtExpirationMs");
+        expField.setAccessible(true);
+        expField.setLong(shortLivedJwtService, -1000L); // Negative expiration -> already expired
+
+        String expiredToken = shortLivedJwtService.generateToken("user_expired", "STUDENT");
+        assertNotNull(expiredToken);
+
+        assertThrows(io.jsonwebtoken.ExpiredJwtException.class, () -> shortLivedJwtService.extractUsername(expiredToken));
     }
 }

@@ -113,20 +113,9 @@ public class AuthService {
         );
 
         LoginResponse response = new LoginResponse();
-        response.setSuccess(true);
-        response.setMessage("Login successful");
-        response.setAccessToken(token);
-        response.setTokenType("Bearer");
-        response.setExpiresIn(604800L);
+        response.setToken(token);
         response.setUsername(user.getUsername());
         response.setRole(user.getRole());
-
-        LoginResponse.UserSummary userSummary = new LoginResponse.UserSummary(
-                user.getUsername(),
-                user.getUsername(),
-                user.getRole()
-        );
-        response.setUser(userSummary);
 
         return response;
     }

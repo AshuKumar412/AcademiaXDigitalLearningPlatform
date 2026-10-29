@@ -17,6 +17,9 @@ public class JwtService {
     @Value("${jwt.secret:AcademiaXSecretKeyForJWTAuthentication2026}")
     private String secret;
 
+    @Value("${jwt.expiration:604800000}")
+    private long jwtExpirationMs = 604800000L;
+
     @PostConstruct
     public void validateSecret() {
         if (secret == null || secret.trim().isEmpty() || secret.length() < 32) {
@@ -29,15 +32,21 @@ public class JwtService {
     }
 
     public String generateToken(String username, String role) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
         return Jwts.builder()
                 .subject(username)
                 .claim("userId", username)
                 .claim("role", role)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 604800000L))
+                .issuedAt(now)
+                .expiration(expiryDate)
                 .signWith(getKey())
                 .compact();
+    }
+
+    public long getJwtExpirationMs() {
+        return jwtExpirationMs;
     }
 
     public String extractUsername(String token) {

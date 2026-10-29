@@ -229,7 +229,10 @@
                   "pm.test('Registration succeeds with 200', function () { pm.response.to.have.status(200); });",
                   "var data = pm.response.json();",
                   "pm.test('Role is INSTRUCTOR', function () { pm.expect(data.role).to.eql('INSTRUCTOR'); });",
-                  "pm.test('NO JWT returned', function () { pm.expect(data.accessToken).to.be.undefined; });",
+                  "pm.test('CRITICAL: NO JWT returned during registration', function () {",
+                  "    pm.expect(data.token).to.be.undefined;",
+                  "    pm.expect(data.accessToken).to.be.undefined;",
+                  "});",
                   "if (data.userId) { pm.environment.set('instructorId', data.userId); }"
                 ],
                 "type": "text/javascript"
@@ -298,13 +301,14 @@
                 "exec": [
                   "pm.test('Login succeeds with 200', function () { pm.response.to.have.status(200); });",
                   "var data = pm.response.json();",
-                  "pm.test('Returns signed accessToken', function () {",
-                  "    pm.expect(data.accessToken).to.be.a('string');",
-                  "    pm.expect(data.tokenType).to.eql('Bearer');",
+                  "pm.test('Returns single signed JWT in token field', function () {",
+                  "    pm.expect(data.token).to.be.a('string');",
+                  "    pm.expect(data.accessToken).to.be.undefined;",
+                  "    pm.expect(data.refreshToken).to.be.undefined;",
                   "});",
-                  "if (data.accessToken) {",
-                  "    pm.environment.set('jwtToken', data.accessToken);",
-                  "    pm.environment.set('studentToken', data.accessToken);",
+                  "if (data.token) {",
+                  "    pm.environment.set('jwtToken', data.token);",
+                  "    pm.environment.set('studentToken', data.token);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -340,8 +344,13 @@
                 "exec": [
                   "pm.test('Login succeeds with 200', function () { pm.response.to.have.status(200); });",
                   "var data = pm.response.json();",
-                  "pm.test('Role is INSTRUCTOR', function () { pm.expect(data.user.role).to.eql('INSTRUCTOR'); });",
-                  "if (data.accessToken) { pm.environment.set('instructorToken', data.accessToken); }"
+                  "pm.test('Role is INSTRUCTOR', function () { pm.expect(data.role).to.eql('INSTRUCTOR'); });",
+                  "pm.test('Returns single token field and no accessToken', function () {",
+                  "    pm.expect(data.token).to.be.a('string');",
+                  "    pm.expect(data.accessToken).to.be.undefined;",
+                  "    pm.expect(data.refreshToken).to.be.undefined;",
+                  "});",
+                  "if (data.token) { pm.environment.set('instructorToken', data.token); }"
                 ],
                 "type": "text/javascript"
               }
