@@ -385,6 +385,7 @@ docker compose down -v
 | **Payment Service** | Idempotency key lookup (Prevents duplicate charges) | **PASS** | Verified in `PaymentIdempotencyTest`. Returns existing payment on repeat. |
 | **Payment Service** | Status lockdown (PUT restricted to ADMIN) | **PASS** | Verified in `PaymentSecurityAuthorizationTest`. Students cannot self-mark as SUCCESS. |
 | **Direct Port Protection** | Direct port access (`8081`–`8085`) protected without Gateway | **PASS** | Every service runs independent `JwtAuthenticationFilter`. |
+| **Token Reusability & Header Propagation** | Single JWT token reusable across all services without repeated authorization errors | **PASS** | Case-insensitive headers, disabled duplicate Tomcat filter registration, and normalized `ROLE_` prefix ensure persistent token validity across all consecutive requests. |
 | **Frontend Web UI** | Standalone web browser frontend | **NOT APPLICABLE** | Application is architected as headless REST microservices. |
 | **Swagger / OpenAPI** | Swagger UI endpoints | **NOT APPLICABLE** | Collection provided via standard Postman Collection file. |
 | **Public Cloud Deployment** | Public external domain URLs | **NOT APPLICABLE** | Platform designed for local/containerized higher-education deployment. |
