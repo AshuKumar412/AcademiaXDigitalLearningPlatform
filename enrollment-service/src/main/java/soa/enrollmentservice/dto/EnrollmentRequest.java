@@ -7,6 +7,7 @@ public class EnrollmentRequest {
     private String status;
     private String idempotencyKey;
     private String testScenario; // For testing: "SUCCESS", "FAIL", "TIMEOUT", "UNKNOWN"
+    private Boolean autoPay;
 
     public String getStudentId() {
         return studentId;
@@ -46,5 +47,13 @@ public class EnrollmentRequest {
 
     public void setTestScenario(String testScenario) {
         this.testScenario = testScenario;
+    }
+
+    public Boolean getAutoPay() {
+        return autoPay;
+    }
+
+    public void setAutoPay(Boolean autoPay) {
+        this.autoPay = autoPay;
     }
 }

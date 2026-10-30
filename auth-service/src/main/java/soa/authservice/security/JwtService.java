@@ -46,7 +46,7 @@ public class JwtService {
 
         var builder = Jwts.builder()
                 .subject(username)
-                .claim("userId", username)
+                .claim("userId", id != null ? String.valueOf(id) : username)
                 .claim("username", username)
                 .claim("role", normalizedRole)
                 .claim("roles", java.util.List.of(normalizedRole, "ROLE_" + normalizedRole))

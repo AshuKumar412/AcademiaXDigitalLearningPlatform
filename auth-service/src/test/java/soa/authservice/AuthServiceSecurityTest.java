@@ -382,4 +382,66 @@ class AuthServiceSecurityTest {
 
         assertThrows(io.jsonwebtoken.ExpiredJwtException.class, () -> shortLivedJwtService.extractUsername(expiredToken));
     }
+
+    // 15. Admin login generates exactly one JWT valid for 7 days (604,800,000 ms)
+    @Test
+    void testAdminLogin_GeneratesSingleJwtWith7DayExpiration() throws Exception {
+        AuthUser admin = new AuthUser();
+        admin.setId(99L);
+        admin.setUsername("admin");
+        admin.setPassword(passwordEncoder.encode("Admin@2026"));
+        admin.setRole("ADMIN");
+
+        when(authUserRepository.findByUsernameIgnoreCase("admin")).thenReturn(Optional.of(admin));
+        when(jwtService.generateToken("admin", "ADMIN")).thenReturn("admin-7day-jwt-token");
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("admin");
+        req.setPassword("Admin@2026");
+
+        LoginResponse res = authService.login(req);
+
+        assertNotNull(res);
+        assertEquals("admin-7day-jwt-token", res.getToken());
+        assertEquals("admin", res.getUsername());
+        assertEquals("ADMIN", res.getRole());
+    }
+
+    // 16. Real JwtService generates token with exactly 7-day expiration (604,800,000 ms) and required claims
+    @Test
+    void testRealJwtService_Default7DaysExpirationAndAllClaims() throws Exception {
+        JwtService realJwt = new JwtService();
+        Field secretField = JwtService.class.getDeclaredField("secret");
+        secretField.setAccessible(true);
+        secretField.set(realJwt, "AcademiaXSecretKeyForJWTAuthentication2026");
+
+        assertEquals(604800000L, realJwt.getJwtExpirationMs(), "Default JWT expiration must be exactly 7 days (604800000 ms)");
+
+        long beforeGen = System.currentTimeMillis();
+        String token = realJwt.generateToken(99L, "admin", "ADMIN");
+        long afterGen = System.currentTimeMillis();
+
+        assertNotNull(token);
+        assertFalse(token.isBlank());
+
+        io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
+                .verifyWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("AcademiaXSecretKeyForJWTAuthentication2026".getBytes()))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        // 1. User ID claim
+        assertEquals("99", claims.get("userId"));
+        // 2. Username claim
+        assertEquals("admin", claims.get("username"));
+        assertEquals("admin", claims.getSubject());
+        // 3. Role claim
+        assertEquals("ADMIN", claims.get("role"));
+        // 4. Issued-at timestamp
+        assertNotNull(claims.getIssuedAt());
+        // 5. Expiration timestamp (approx 7 days from now)
+        assertNotNull(claims.getExpiration());
+        long diffMs = claims.getExpiration().getTime() - claims.getIssuedAt().getTime();
+        assertEquals(604800000L, diffMs, "Token lifetime must be exactly 604800000 ms (7 days)");
+    }
 }

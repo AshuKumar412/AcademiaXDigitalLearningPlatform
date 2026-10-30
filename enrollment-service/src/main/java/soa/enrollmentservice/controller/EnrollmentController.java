@@ -65,6 +65,14 @@ public class EnrollmentController {
         return enrollmentService.cancelEnrollment(id, reason);
     }
 
+    // CONFIRM PAYMENT ENDPOINT (notified by Payment Service)
+    @PostMapping("/{id}/confirm-payment")
+    public EnrollmentResponse confirmPayment(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "SUCCESS") String paymentStatus) {
+        return enrollmentService.confirmPayment(id, paymentStatus);
+    }
+
     // EXISTS CHECK (used by Payment Service via Feign)
     @GetMapping("/{id}/exists")
     public ResponseEntity<Boolean> existsById(@PathVariable Long id) {

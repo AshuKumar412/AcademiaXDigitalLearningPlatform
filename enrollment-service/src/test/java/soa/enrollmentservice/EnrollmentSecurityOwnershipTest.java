@@ -67,6 +67,7 @@ class EnrollmentSecurityOwnershipTest {
 
         EnrollmentRequest request = new EnrollmentRequest();
         request.setCourseId(5L);
+        request.setAutoPay(true);
 
         when(userClient.existsById("student_alice")).thenReturn(ResponseEntity.ok(true));
 

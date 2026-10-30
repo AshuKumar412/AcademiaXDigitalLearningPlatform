@@ -57,6 +57,7 @@ class EnrollmentSagaServiceTest {
         EnrollmentRequest request = new EnrollmentRequest();
         request.setStudentId(studentId);
         request.setCourseId(courseId);
+        request.setAutoPay(true);
 
         when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
 
@@ -97,6 +98,7 @@ class EnrollmentSagaServiceTest {
         EnrollmentRequest request = new EnrollmentRequest();
         request.setStudentId(studentId);
         request.setCourseId(courseId);
+        request.setAutoPay(true);
 
         when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
 
@@ -135,6 +137,7 @@ class EnrollmentSagaServiceTest {
         EnrollmentRequest request = new EnrollmentRequest();
         request.setStudentId(studentId);
         request.setCourseId(courseId);
+        request.setAutoPay(true);
 
         when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
 
@@ -263,5 +266,145 @@ class EnrollmentSagaServiceTest {
 
         // No payment initiated
         verify(paymentClient, never()).createPayment(any());
+    }
+
+    @Test
+    void testCreateEnrollment_DecoupledMode_ReturnsPendingPaymentWithSeatReserved() {
+        String studentId = "STU101";
+        Long courseId = 1L;
+
+        EnrollmentRequest request = new EnrollmentRequest();
+        request.setStudentId(studentId);
+        request.setCourseId(courseId);
+        // autoPay is false by default
+
+        when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
+
+        CourseClientResponse courseResponse = new CourseClientResponse();
+        courseResponse.setId(courseId);
+        courseResponse.setCapacity(25);
+        when(courseClient.getCourseById(courseId)).thenReturn(courseResponse);
+
+        when(enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId)).thenReturn(Optional.empty());
+        when(courseClient.reserveSeat(courseId)).thenReturn(ResponseEntity.ok(true));
+
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> {
+            Enrollment e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(77L);
+            return e;
+        });
+
+        EnrollmentResponse response = enrollmentService.createEnrollment(request);
+
+        assertNotNull(response);
+        assertEquals(77L, response.getId());
+        assertEquals("PENDING_PAYMENT", response.getStatus());
+        assertTrue(response.isSeatReserved());
+        verify(courseClient, times(1)).reserveSeat(courseId);
+        verify(paymentClient, never()).createPayment(any());
+    }
+
+    @Test
+    void testConfirmPayment_Success_TransitionsToEnrolled() {
+        Enrollment enrollment = new Enrollment();
+        enrollment.setId(88L);
+        enrollment.setCourseId(2L);
+        enrollment.setStudentId("STU101");
+        enrollment.setStatus("PENDING_PAYMENT");
+        enrollment.setSeatReserved(true);
+
+        when(enrollmentRepository.findById(88L)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse response = enrollmentService.confirmPayment(88L, "SUCCESS");
+
+        assertNotNull(response);
+        assertEquals("ENROLLED", response.getStatus());
+        assertTrue(response.isSeatReserved());
+        verify(courseClient, never()).releaseSeat(any());
+    }
+
+    @Test
+    void testConfirmPayment_Failed_CompensatesSeatAndTransitionsToPaymentFailed() {
+        Enrollment enrollment = new Enrollment();
+        enrollment.setId(89L);
+        enrollment.setCourseId(3L);
+        enrollment.setStudentId("STU102");
+        enrollment.setStatus("PENDING_PAYMENT");
+        enrollment.setSeatReserved(true);
+
+        when(enrollmentRepository.findById(89L)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse response = enrollmentService.confirmPayment(89L, "FAILED");
+
+        assertNotNull(response);
+        assertEquals("PAYMENT_FAILED", response.getStatus());
+        assertFalse(response.isSeatReserved());
+        verify(courseClient, times(1)).releaseSeat(3L);
+    }
+
+    @Test
+    void testDuplicatePendingEnrollment_Rejected() {
+        String studentId = "STU103";
+        Long courseId = 5L;
+
+        EnrollmentRequest request = new EnrollmentRequest();
+        request.setStudentId(studentId);
+        request.setCourseId(courseId);
+
+        when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
+
+        CourseClientResponse courseResponse = new CourseClientResponse();
+        courseResponse.setId(courseId);
+        courseResponse.setCapacity(20);
+        when(courseClient.getCourseById(courseId)).thenReturn(courseResponse);
+
+        Enrollment existingPending = new Enrollment();
+        existingPending.setId(90L);
+        existingPending.setStudentId(studentId);
+        existingPending.setCourseId(courseId);
+        existingPending.setStatus("PENDING_PAYMENT");
+        when(enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId)).thenReturn(Optional.of(existingPending));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> enrollmentService.createEnrollment(request));
+        assertTrue(ex.getMessage().contains("already has a pending enrollment"));
+
+        verify(courseClient, never()).reserveSeat(any());
+    }
+
+    @Test
+    void testReEnrollmentAfterCancellation_Allowed() {
+        String studentId = "STU104";
+        Long courseId = 6L;
+
+        EnrollmentRequest request = new EnrollmentRequest();
+        request.setStudentId(studentId);
+        request.setCourseId(courseId);
+
+        when(userClient.existsById(studentId)).thenReturn(ResponseEntity.ok(true));
+
+        CourseClientResponse courseResponse = new CourseClientResponse();
+        courseResponse.setId(courseId);
+        courseResponse.setCapacity(20);
+        when(courseClient.getCourseById(courseId)).thenReturn(courseResponse);
+
+        // Previous enrollment was cancelled
+        Enrollment existingCancelled = new Enrollment();
+        existingCancelled.setId(91L);
+        existingCancelled.setStudentId(studentId);
+        existingCancelled.setCourseId(courseId);
+        existingCancelled.setStatus("CANCELLED");
+        existingCancelled.setSeatReserved(false);
+        when(enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId)).thenReturn(Optional.of(existingCancelled));
+        when(courseClient.reserveSeat(courseId)).thenReturn(ResponseEntity.ok(true));
+        when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EnrollmentResponse response = enrollmentService.createEnrollment(request);
+
+        assertNotNull(response);
+        assertEquals("PENDING_PAYMENT", response.getStatus());
+        assertTrue(response.isSeatReserved());
+        verify(courseClient, times(1)).reserveSeat(courseId);
     }
 }

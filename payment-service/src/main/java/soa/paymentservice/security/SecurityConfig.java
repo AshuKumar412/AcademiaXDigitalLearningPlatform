@@ -28,8 +28,10 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
-                        // Status modification via PUT is restricted to ADMIN to prevent clients arbitrarily marking payments as SUCCESS
+                        // Administrative operations restricted to ADMIN
+                        .requestMatchers(HttpMethod.GET, "/payments").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/payments/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/payments/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

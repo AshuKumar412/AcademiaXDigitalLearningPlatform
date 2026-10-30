@@ -4,7 +4,7 @@
 **Architecture**: 7 Microservices (Eureka Server, API Gateway, Auth, User, Course, Enrollment, Payment)  
 **Technology Stack**: Java 25 | Spring Boot 4.1.1 | Spring Cloud 2025.1.3 | PostgreSQL 18 | OpenFeign | Eureka | Spring Cloud Gateway | Docker Compose  
 **Date**: October 2026  
-**Status**: Production-Ready, Fully Hardened & Verified (74/74 Automated Tests Passed)
+**Status**: Production-Ready, Fully Hardened & Verified (80+ Automated Tests Passed across 7 Microservices)
 
 ---
 
@@ -82,7 +82,8 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
 
 | Method | Endpoint Path | Purpose | Required Role | Headers | Request Body | Status (Success/Failure) | Response Structure |
 |---|---|---|---|---|---|---|---|
-| `POST` | `/enrollments` | Initiate Saga enrollment (Seat reserve ➔ Pending ➔ Payment). | **STUDENT** (Own ID only), **ADMIN** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"studentId":"string","courseId":1,"testScenario":"FAIL\|TIMEOUT"}` | `200 OK` or `201 Created` / `400`, `401`, `403`, `409`, `500` | `{"id":1,"studentId":"string","courseId":1,"status":"ENROLLED","seatReserved":true,"idempotencyKey":"string"}` |
+| `POST` | `/enrollments` | Create course enrollment with atomic seat reservation (status: `PENDING_PAYMENT`). | **STUDENT** (Own ID only), **ADMIN** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"studentId":"string","courseId":1}` | `200 OK` or `201 Created` / `400`, `401`, `403`, `409` | `{"id":1,"studentId":"string","courseId":1,"status":"PENDING_PAYMENT","seatReserved":true,"idempotencyKey":"string"}` |
+| `POST` | `/enrollments/{id}/confirm-payment` | Confirm payment callback from Payment Service (`SUCCESS` ➔ `ENROLLED`; `FAILED` ➔ `PAYMENT_FAILED` + release seat). | **Authenticated** (Internal / Payment Service) | `Authorization: Bearer <jwt>` | Query param: `?paymentStatus=SUCCESS\|FAILED` | `200 OK` / `401`, `404` | `{"id":1,"status":"ENROLLED\|PAYMENT_FAILED","seatReserved":boolean,...}` |
 | `GET` | `/enrollments` | List enrollments (Students see own; Admin sees all). | **STUDENT**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401` | `[{"id":1,"studentId":"string","courseId":1,"status":"ENROLLED",...}]` |
 | `GET` | `/enrollments/{id}` | Get enrollment record by ID. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403`, `404` | `{"id":1,"studentId":"string",...}` |
 | `GET` | `/enrollments/by-student/{studentId}` | List enrollments for a specific student. | **Self (Student)**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403` | `[{"id":1,...}]` |
@@ -90,7 +91,7 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
 | `POST` | `/enrollments/{id}/cancel` | Cancel enrollment and release reserved seat. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>` | Query param: `?reason=text` | `200 OK` / `401`, `403`, `404` | `{"id":1,"status":"CANCELLED","seatReserved":false,...}` |
 | `POST` | `/enrollments/{id}/reconcile` | Force reconciliation of pending payment for enrollment. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403`, `404` | `{"id":1,"status":"ENROLLED\|PAYMENT_FAILED",...}` |
 | `PUT` | `/enrollments/{id}` | Update enrollment record. | **ADMIN** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"studentId":"string","courseId":1,"status":"string"}` | `200 OK` / `401`, `404` | `{"id":1,...}` |
-| `DELETE` | `/enrollments/{id}` | Delete enrollment record. | **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `404` | `"Enrollment deleted successfully"` |
+| `DELETE` | `/enrollments/{id}` | Delete enrollment record and compensate reserved seat. | **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `404` | `"Enrollment deleted successfully"` |
 
 ---
 
@@ -99,7 +100,7 @@ All downstream service endpoints are accessible through the **API Gateway** (`ht
 
 | Method | Endpoint Path | Purpose | Required Role | Headers | Request Body | Status (Success/Failure) | Response Structure |
 |---|---|---|---|---|---|---|---|
-| `POST` | `/payments` | Create idempotent payment for an enrollment. | **Authenticated** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"enrollmentId":1,"amount":500.00,"idempotencyKey":"string","testScenario":"FAIL\|TIMEOUT"}` | `200 OK` / `400`, `401`, `404`, `409` | `{"id":1,"enrollmentId":1,"amount":500.00,"paymentStatus":"SUCCESS","transactionId":"TXN-101","idempotencyKey":"string"}` |
+| `POST` | `/payments` | Process tuition payment for `PENDING_PAYMENT` enrollment, prevent duplicates, and notify Enrollment Service. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>`, `Content-Type: application/json` | `{"enrollmentId":1,"amount":500.00,"idempotencyKey":"string","testScenario":"FAIL\|TIMEOUT"}` | `200 OK` / `400`, `401`, `403`, `404`, `409` | `{"id":1,"enrollmentId":1,"amount":500.00,"paymentStatus":"SUCCESS","transactionId":"TXN-101","idempotencyKey":"string"}` |
 | `GET` | `/payments` | List all payments. | **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403` | `[{"id":1,"enrollmentId":1,...}]` |
 | `GET` | `/payments/{id}` | Get payment by payment ID. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403`, `404` | `{"id":1,"enrollmentId":1,"amount":500.00,...}` |
 | `GET` | `/payments/by-enrollment/{enrollmentId}` | Get payment for a specific enrollment ID. | **Student Owner**, **ADMIN** | `Authorization: Bearer <jwt>` | None | `200 OK` / `401`, `403`, `404` | `{"id":1,"enrollmentId":1,...}` |
@@ -378,12 +379,12 @@ docker compose down -v
 | **User Service** | Multi-identifier lookup (by numeric ID, studentId, instructorId, email) | **PASS** | Verified in `UserIdUniquenessIntegrationTest` and `UserServiceSecurityTest`. |
 | **User Service** | Privacy protection (Users access only own profile) | **PASS** | Verified in `UserServiceSecurityTest`. Returns 403 on other users' profiles. |
 | **Course Service** | Atomic seat reservation & release query | **PASS** | Verified in `CourseSeatReservationTest`. Capacity constraint prevents overbooking. |
-| **Course Service** | Instructor ownership check for course updates | **PASS** | Verified in `CourseSecurityAndOwnershipTest`. |
-| **Enrollment Service** | Distributed Saga orchestrator state transitions | **PASS** | Verified in `EnrollmentSagaServiceTest`. |
-| **Enrollment Service** | Automatic compensating seat release on payment failure | **PASS** | Verified in `EnrollmentSagaServiceTest`. Course seat released on failure. |
-| **Enrollment Service** | Background payment reconciliation worker | **PASS** | Verified in `EnrollmentSagaServiceTest`. Pending enrollments recovered. |
-| **Payment Service** | Idempotency key lookup (Prevents duplicate charges) | **PASS** | Verified in `PaymentIdempotencyTest`. Returns existing payment on repeat. |
-| **Payment Service** | Status lockdown (PUT restricted to ADMIN) | **PASS** | Verified in `PaymentSecurityAuthorizationTest`. Students cannot self-mark as SUCCESS. |
+| **Course Service** | Instructor ownership check & Admin full update/delete override | **PASS** | Verified in `CourseSecurityAndOwnershipTest`. Admin can update/delete any course; instructors manage own. |
+| **Enrollment Service** | Decoupled workflow (`POST /enrollments` returns `PENDING_PAYMENT` with reserved seat) | **PASS** | Verified in `EnrollmentSagaServiceTest.testCreateEnrollment_DecoupledMode_ReturnsPendingPaymentWithSeatReserved`. |
+| **Enrollment Service** | Confirm payment callback (`SUCCESS` ➔ `ENROLLED`; `FAILED` ➔ `PAYMENT_FAILED` + release seat) | **PASS** | Verified in `EnrollmentSagaServiceTest.testConfirmPayment_Success_TransitionsToEnrolled` & `testConfirmPayment_Failed_CompensatesSeatAndTransitionsToPaymentFailed`. |
+| **Enrollment Service** | Strict duplicate enrollment rejection for same student/course in active/pending states | **PASS** | Application check + DB Partial Unique Index `uq_active_enrollment` in `docs/migrations/02_enrollment_and_payment_uniqueness.sql`. |
+| **Payment Service** | Student ownership, status validation, duplicate payment prevention & idempotency | **PASS** | Verified in `PaymentSecurityAuthorizationTest` (10 tests) and `PaymentIdempotencyTest` (5 tests). |
+| **Admin Operations** | 7-day single token expiration & unrestricted CRUD on users, courses, enrollments, and payments | **PASS** | Verified in `AuthServiceSecurityTest`, `UserServiceSecurityTest`, `CourseSecurityAndOwnershipTest`, `PaymentSecurityAuthorizationTest`. |
 | **Direct Port Protection** | Direct port access (`8081`–`8085`) protected without Gateway | **PASS** | Every service runs independent `JwtAuthenticationFilter`. |
 | **Token Reusability & Header Propagation** | Single JWT token reusable across all services without repeated authorization errors | **PASS** | Case-insensitive headers, disabled duplicate Tomcat filter registration, and normalized `ROLE_` prefix ensure persistent token validity across all consecutive requests. |
 | **Frontend Web UI** | Standalone web browser frontend | **NOT APPLICABLE** | Application is architected as headless REST microservices. |

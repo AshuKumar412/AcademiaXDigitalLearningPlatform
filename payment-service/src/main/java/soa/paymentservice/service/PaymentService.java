@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,7 +30,7 @@ public class PaymentService {
         this.enrollmentClient = enrollmentClient;
     }
 
-    // CREATE - validates enrollment exists + enforces idempotency & prevents duplicate payment per enrollment
+    // CREATE - validates enrollment exists + enforces student ownership, checks status, prevents duplicate payment, and notifies enrollment service
     @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
 
@@ -44,25 +45,66 @@ public class PaymentService {
             }
         }
 
-        Boolean enrollmentExists;
+        // 1. Verify that the enrollment exists
+        EnrollmentClientResponse enrollment = null;
         try {
-            enrollmentExists = enrollmentClient.existsById(request.getEnrollmentId()).getBody();
-        } catch (Exception e) {
-            throw new RuntimeException("Enrollment Service unavailable: " + e.getMessage());
+            enrollment = enrollmentClient.getEnrollmentById(request.getEnrollmentId());
+        } catch (Exception ignored) {
         }
-        if (enrollmentExists == null || !enrollmentExists) {
-            throw new IllegalArgumentException("Enrollment '" + request.getEnrollmentId() + "' does not exist.");
+        if (enrollment == null) {
+            Boolean exists = null;
+            try {
+                ResponseEntity<Boolean> resp = enrollmentClient.existsById(request.getEnrollmentId());
+                exists = (resp != null) ? resp.getBody() : null;
+            } catch (Exception ignored) {
+            }
+            if (exists == null || !exists) {
+                throw new IllegalArgumentException("Enrollment '" + request.getEnrollmentId() + "' does not exist.");
+            }
         }
 
+        // 2. Verify that the enrollment belongs to the authenticated student (unless ADMIN)
+        if (enrollment != null && !isCurrentUserAdmin() && isCurrentUserStudent()) {
+            String currentStudent = getCurrentUser();
+            if (currentStudent != null && enrollment.getStudentId() != null && !enrollment.getStudentId().equalsIgnoreCase(currentStudent)) {
+                boolean isOwn = false;
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                    String claimUserId = claims.get("userId", String.class);
+                    Object claimId = claims.get("id");
+                    if (claimUserId != null && enrollment.getStudentId().equalsIgnoreCase(claimUserId)) {
+                        isOwn = true;
+                    } else if (claimId != null && enrollment.getStudentId().equalsIgnoreCase(String.valueOf(claimId))) {
+                        isOwn = true;
+                    }
+                }
+                if (!isOwn) {
+                    throw new AccessDeniedException("Students can only pay for their own enrollments");
+                }
+            }
+        }
+
+        // 3. Verify that the enrollment is in PENDING_PAYMENT status
+        if (enrollment != null) {
+            if ("ENROLLED".equalsIgnoreCase(enrollment.getStatus()) || "COMPLETED".equalsIgnoreCase(enrollment.getStatus())) {
+                throw new IllegalStateException("Enrollment '" + request.getEnrollmentId() + "' is already paid and completed.");
+            }
+            if ("CANCELLED".equalsIgnoreCase(enrollment.getStatus())) {
+                throw new IllegalStateException("Enrollment '" + request.getEnrollmentId() + "' has been cancelled.");
+            }
+        }
+
+        // 4. Prevent duplicate payment
         Optional<Payment> existingByEnrollment = paymentRepository.findByEnrollmentId(request.getEnrollmentId());
         if (existingByEnrollment.isPresent()) {
             Payment existingPayment = existingByEnrollment.get();
-            if (request.getIdempotencyKey() != null && request.getIdempotencyKey().equals(existingPayment.getIdempotencyKey())) {
-                return convertToResponse(existingPayment);
+            if ("SUCCESS".equalsIgnoreCase(existingPayment.getPaymentStatus())) {
+                if (request.getIdempotencyKey() != null && request.getIdempotencyKey().equals(existingPayment.getIdempotencyKey())) {
+                    return convertToResponse(existingPayment);
+                }
+                throw new IllegalStateException(
+                        "A successful payment already exists for enrollment '" + request.getEnrollmentId() + "'.");
             }
-            throw new IllegalStateException(
-                    "A payment already exists for enrollment '" + request.getEnrollmentId()
-                    + "'. Retrieve the existing payment and update its status instead.");
         }
 
         String scenario = request.getTestScenario();
@@ -70,26 +112,36 @@ public class PaymentService {
             throw new RuntimeException("Payment gateway timed out during processing for enrollment " + request.getEnrollmentId());
         }
 
-        Payment payment = new Payment();
+        Payment payment = existingByEnrollment.orElseGet(Payment::new);
         payment.setEnrollmentId(request.getEnrollmentId());
         payment.setAmount(request.getAmount());
         payment.setIdempotencyKey(request.getIdempotencyKey() != null ? request.getIdempotencyKey() : UUID.randomUUID().toString());
         payment.setTransactionId("TXN-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 9000 + 1000));
         payment.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "CARD");
 
+        String status;
         if ("FAIL".equalsIgnoreCase(scenario) || "PAYMENT_REJECTED".equalsIgnoreCase(scenario)) {
-            payment.setPaymentStatus("FAILED");
+            status = "FAILED";
         } else if ("UNKNOWN".equalsIgnoreCase(scenario)) {
-            payment.setPaymentStatus("UNKNOWN");
+            status = "UNKNOWN";
         } else {
             if (request.getPaymentStatus() != null && !request.getPaymentStatus().isBlank()) {
-                payment.setPaymentStatus(normalizeStatus(request.getPaymentStatus()));
+                status = normalizeStatus(request.getPaymentStatus());
             } else {
-                payment.setPaymentStatus("SUCCESS");
+                status = "SUCCESS";
             }
         }
+        payment.setPaymentStatus(status);
 
         Payment savedPayment = paymentRepository.save(payment);
+
+        // 5. Notify Enrollment Service
+        try {
+            enrollmentClient.confirmPayment(request.getEnrollmentId(), status);
+        } catch (Exception e) {
+            // Inter-service call notice logged
+        }
+
         return convertToResponse(savedPayment);
     }
 
@@ -194,8 +246,11 @@ public class PaymentService {
     }
 
     private void checkPaymentOwnership(Payment payment) {
+        if (isCurrentUserAdmin()) {
+            return;
+        }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT"))) {
+        if (auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT") || a.getAuthority().equals("STUDENT"))) {
             String currentStudent = auth.getName();
             try {
                 EnrollmentClientResponse enr = enrollmentClient.getEnrollmentById(payment.getEnrollmentId());
@@ -221,11 +276,40 @@ public class PaymentService {
         }
     }
 
-    private boolean isCurrentUserAdmin() {
+    public boolean isCurrentUserAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            boolean hasAdminAuthority = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+            if (hasAdminAuthority) {
+                return true;
+            }
+            if (auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                Object roleClaim = claims.get("role");
+                if ("ADMIN".equalsIgnoreCase(String.valueOf(roleClaim)) || "ROLE_ADMIN".equalsIgnoreCase(String.valueOf(roleClaim))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            return auth.getName();
+        }
+        return null;
+    }
+
+    private boolean isCurrentUserStudent() {
+        if (isCurrentUserAdmin()) {
+            return false;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             return auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT") || a.getAuthority().equals("STUDENT"));
         }
         return false;
     }

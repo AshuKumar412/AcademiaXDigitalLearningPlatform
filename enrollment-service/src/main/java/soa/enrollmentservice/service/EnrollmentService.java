@@ -117,14 +117,14 @@ public class EnrollmentService {
 
         if (existingOpt.isPresent()) {
             Enrollment existing = existingOpt.get();
-            // Active enrollment already exists
+            // Active or pending enrollment already exists
             if ("ENROLLED".equalsIgnoreCase(existing.getStatus()) || "COMPLETED".equalsIgnoreCase(existing.getStatus())) {
                 throw new IllegalStateException("Student '" + studentId + "' is already enrolled in course " + request.getCourseId());
             } else if ("PENDING_PAYMENT".equalsIgnoreCase(existing.getStatus())) {
                 if (request.getIdempotencyKey() != null && request.getIdempotencyKey().equals(existing.getIdempotencyKey())) {
                     return convertToResponse(existing);
                 }
-                return reconcileEnrollment(existing.getId());
+                throw new IllegalStateException("Student '" + studentId + "' already has a pending enrollment in course " + request.getCourseId() + ". Please complete tuition payment.");
             } else {
                 // PAYMENT_FAILED or CANCELLED: reuse existing row for retry
                 enrollment = existing;
@@ -153,7 +153,12 @@ public class EnrollmentService {
         enrollment.setFailureReason(null);
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
 
-        // 6. STEP 3: Initiate Payment with Payment Service
+        // If autoPay is not requested, return the PENDING_PAYMENT enrollment with seat reserved
+        if (!Boolean.TRUE.equals(request.getAutoPay())) {
+            return convertToResponse(savedEnrollment);
+        }
+
+        // 6. STEP 3: Auto-Initiate Payment with Payment Service (if autoPay requested)
         PaymentClientResponse paymentResponse = null;
         try {
             PaymentClientRequest paymentRequest = new PaymentClientRequest();
@@ -191,6 +196,27 @@ public class EnrollmentService {
             enrollmentRepository.save(savedEnrollment);
             return convertToResponse(savedEnrollment);
         }
+    }
+
+    // ==========================================
+    // CONFIRM PAYMENT NOTIFICATION FROM PAYMENT SERVICE
+    // ==========================================
+    @Transactional
+    public EnrollmentResponse confirmPayment(Long id, String paymentStatus) {
+        Enrollment enrollment = enrollmentRepository.findById(id)
+                .orElseThrow(() -> new EnrollmentNotFoundException("Enrollment not found with id: " + id));
+
+        if ("SUCCESS".equalsIgnoreCase(paymentStatus) || "PAID".equalsIgnoreCase(paymentStatus)) {
+            enrollment.setStatus("ENROLLED");
+            enrollment.setFailureReason(null);
+        } else if ("FAILED".equalsIgnoreCase(paymentStatus)) {
+            compensateSeatReservation(enrollment, "Payment was rejected by provider");
+            enrollment.setStatus("PAYMENT_FAILED");
+            enrollment.setFailureReason("Payment was rejected by provider");
+        } else {
+            enrollment.setFailureReason("Payment outcome: " + paymentStatus);
+        }
+        return convertToResponse(enrollmentRepository.save(enrollment));
     }
 
     // ==========================================
@@ -277,8 +303,16 @@ public class EnrollmentService {
         }
     }
 
-    // READ ALL
+    // READ ALL (Students see own; ADMIN sees all)
     public List<EnrollmentResponse> getAllEnrollments() {
+        if (!isCurrentUserAdmin() && isCurrentUserStudent()) {
+            String currentUser = getCurrentUser();
+            if (currentUser != null && !currentUser.isBlank()) {
+                return enrollmentRepository.findByStudentId(currentUser).stream()
+                        .map(this::convertToResponse)
+                        .toList();
+            }
+        }
         return enrollmentRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .toList();
@@ -289,8 +323,8 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(id)
                 .orElseThrow(() -> new EnrollmentNotFoundException("Enrollment not found with id: " + id));
 
-        // Enforce ownership: Students can only view their own enrollments
-        if (isCurrentUserStudent()) {
+        // Enforce ownership: Students can only view their own enrollments (ADMIN can view any)
+        if (!isCurrentUserAdmin() && isCurrentUserStudent()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && !enrollment.getStudentId().equalsIgnoreCase(currentUser)) {
                 throw new AccessDeniedException("Students can only view their own enrollments");
@@ -302,8 +336,8 @@ public class EnrollmentService {
 
     // READ BY STUDENT ID
     public List<EnrollmentResponse> getEnrollmentsByStudent(String studentId) {
-        // Enforce ownership: Students can only view their own enrollments
-        if (isCurrentUserStudent()) {
+        // Enforce ownership: Students can only view their own enrollments (ADMIN can view any)
+        if (!isCurrentUserAdmin() && isCurrentUserStudent()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && !currentUser.equalsIgnoreCase(studentId)) {
                 throw new AccessDeniedException("Students can only view their own enrollments");
@@ -320,9 +354,15 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(id)
                 .orElseThrow(() -> new EnrollmentNotFoundException("Enrollment not found with id: " + id));
 
-        enrollment.setStudentId(request.getStudentId());
-        enrollment.setCourseId(request.getCourseId());
-        enrollment.setStatus(request.getStatus());
+        if (request.getStudentId() != null && !request.getStudentId().isBlank()) {
+            enrollment.setStudentId(request.getStudentId());
+        }
+        if (request.getCourseId() != null) {
+            enrollment.setCourseId(request.getCourseId());
+        }
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            enrollment.setStatus(request.getStatus().toUpperCase());
+        }
 
         return convertToResponse(enrollmentRepository.save(enrollment));
     }
@@ -331,7 +371,7 @@ public class EnrollmentService {
     public void deleteEnrollment(Long id) {
         Enrollment enrollment = enrollmentRepository.findById(id)
                 .orElseThrow(() -> new EnrollmentNotFoundException("Enrollment not found with id: " + id));
-        compensateSeatReservation(enrollment, "Enrollment deleted");
+        compensateSeatReservation(enrollment, "Enrollment deleted by administrator");
         enrollmentRepository.delete(enrollment);
     }
 
@@ -343,11 +383,32 @@ public class EnrollmentService {
         return null;
     }
 
-    private boolean isCurrentUserStudent() {
+    public boolean isCurrentUserAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            boolean hasAdminAuthority = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+            if (hasAdminAuthority) {
+                return true;
+            }
+            if (auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                Object roleClaim = claims.get("role");
+                if ("ADMIN".equalsIgnoreCase(String.valueOf(roleClaim)) || "ROLE_ADMIN".equalsIgnoreCase(String.valueOf(roleClaim))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isCurrentUserStudent() {
+        if (isCurrentUserAdmin()) {
+            return false;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             return auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT") || a.getAuthority().equals("STUDENT"));
         }
         return false;
     }

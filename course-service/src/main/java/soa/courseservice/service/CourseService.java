@@ -124,13 +124,13 @@ public class CourseService {
         return true;
     }
 
-    // UPDATE - enforces instructor ownership
+    // UPDATE - enforces instructor ownership (ADMIN can update any course)
     public CourseResponse updateCourse(Long id, CourseRequest request) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + id));
 
         // Enforce ownership: Instructor can only update their own courses
-        if (isCurrentUserInstructor()) {
+        if (!isCurrentUserAdmin() && isCurrentUserInstructor()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && course.getInstructorId() != null && !course.getInstructorId().equalsIgnoreCase(currentUser)) {
                 boolean isOwn = false;
@@ -150,10 +150,19 @@ public class CourseService {
             }
         }
 
-        course.setTitle(request.getTitle());
-        course.setInstructor(request.getInstructor());
-        course.setCapacity(request.getCapacity());
-        if (request.getStatus() != null) {
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            course.setTitle(request.getTitle());
+        }
+        if (request.getInstructor() != null && !request.getInstructor().isBlank()) {
+            course.setInstructor(request.getInstructor());
+        }
+        if (request.getInstructorId() != null && !request.getInstructorId().isBlank()) {
+            course.setInstructorId(request.getInstructorId());
+        }
+        if (request.getCapacity() > 0) {
+            course.setCapacity(request.getCapacity());
+        }
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
             course.setStatus(request.getStatus().toUpperCase());
         }
         if (request.getEnrollmentDeadline() != null) {
@@ -163,13 +172,13 @@ public class CourseService {
         return convertToResponse(courseRepository.save(course));
     }
 
-    // DELETE - enforces instructor ownership
+    // DELETE - enforces instructor ownership (ADMIN can delete any course)
     public void deleteCourse(Long id) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + id));
 
         // Enforce ownership: Instructor can only delete their own courses
-        if (isCurrentUserInstructor()) {
+        if (!isCurrentUserAdmin() && isCurrentUserInstructor()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && course.getInstructorId() != null && !course.getInstructorId().equalsIgnoreCase(currentUser)) {
                 boolean isOwn = false;
@@ -200,11 +209,32 @@ public class CourseService {
         return null;
     }
 
-    private boolean isCurrentUserInstructor() {
+    public boolean isCurrentUserAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            boolean hasAdminAuthority = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+            if (hasAdminAuthority) {
+                return true;
+            }
+            if (auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                Object roleClaim = claims.get("role");
+                if ("ADMIN".equalsIgnoreCase(String.valueOf(roleClaim)) || "ROLE_ADMIN".equalsIgnoreCase(String.valueOf(roleClaim))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isCurrentUserInstructor() {
+        if (isCurrentUserAdmin()) {
+            return false;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             return auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_INSTRUCTOR"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_INSTRUCTOR") || a.getAuthority().equals("INSTRUCTOR"));
         }
         return false;
     }

@@ -139,4 +139,130 @@ class PaymentSecurityAuthorizationTest {
         assertNotNull(response);
         assertEquals("SUCCESS", response.getPaymentStatus());
     }
+
+    @Test
+    void testCreatePayment_StudentCanPayOwnEnrollment_Succeeds() {
+        authenticateAs("student_alice", "STUDENT");
+
+        EnrollmentClientResponse enr = new EnrollmentClientResponse();
+        enr.setId(60L);
+        enr.setStudentId("student_alice");
+        enr.setStatus("PENDING_PAYMENT");
+        when(enrollmentClient.getEnrollmentById(60L)).thenReturn(enr);
+
+        when(paymentRepository.findByEnrollmentId(60L)).thenReturn(Optional.empty());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> {
+            Payment p = inv.getArgument(0);
+            if (p.getId() == null) p.setId(101L);
+            return p;
+        });
+
+        PaymentRequest request = new PaymentRequest();
+        request.setEnrollmentId(60L);
+        request.setAmount(new BigDecimal("500.00"));
+        request.setIdempotencyKey("PAY-ALICE-60");
+
+        PaymentResponse response = paymentService.createPayment(request);
+
+        assertNotNull(response);
+        assertEquals("SUCCESS", response.getPaymentStatus());
+        assertEquals(60L, response.getEnrollmentId());
+        verify(enrollmentClient).confirmPayment(60L, "SUCCESS");
+    }
+
+    @Test
+    void testCreatePayment_StudentCannotPayOthersEnrollment_ThrowsAccessDenied() {
+        authenticateAs("student_alice", "STUDENT");
+
+        EnrollmentClientResponse enr = new EnrollmentClientResponse();
+        enr.setId(61L);
+        enr.setStudentId("student_bob"); // Bob's enrollment
+        enr.setStatus("PENDING_PAYMENT");
+        when(enrollmentClient.getEnrollmentById(61L)).thenReturn(enr);
+
+        PaymentRequest request = new PaymentRequest();
+        request.setEnrollmentId(61L);
+        request.setAmount(new BigDecimal("500.00"));
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> paymentService.createPayment(request));
+        assertEquals("Students can only pay for their own enrollments", ex.getMessage());
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreatePayment_AlreadyEnrolled_ThrowsIllegalStateException() {
+        authenticateAs("student_alice", "STUDENT");
+
+        EnrollmentClientResponse enr = new EnrollmentClientResponse();
+        enr.setId(62L);
+        enr.setStudentId("student_alice");
+        enr.setStatus("ENROLLED"); // Already enrolled/paid
+        when(enrollmentClient.getEnrollmentById(62L)).thenReturn(enr);
+
+        PaymentRequest request = new PaymentRequest();
+        request.setEnrollmentId(62L);
+        request.setAmount(new BigDecimal("500.00"));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> paymentService.createPayment(request));
+        assertEquals("Enrollment '62' is already paid and completed.", ex.getMessage());
+    }
+
+    @Test
+    void testCreatePayment_DuplicateSuccessPayment_ThrowsIllegalStateException() {
+        authenticateAs("student_alice", "STUDENT");
+
+        EnrollmentClientResponse enr = new EnrollmentClientResponse();
+        enr.setId(63L);
+        enr.setStudentId("student_alice");
+        enr.setStatus("PENDING_PAYMENT");
+        when(enrollmentClient.getEnrollmentById(63L)).thenReturn(enr);
+
+        Payment existingSuccess = new Payment();
+        existingSuccess.setId(201L);
+        existingSuccess.setEnrollmentId(63L);
+        existingSuccess.setPaymentStatus("SUCCESS");
+        existingSuccess.setIdempotencyKey("KEY-1");
+        when(paymentRepository.findByEnrollmentId(63L)).thenReturn(Optional.of(existingSuccess));
+
+        PaymentRequest request = new PaymentRequest();
+        request.setEnrollmentId(63L);
+        request.setAmount(new BigDecimal("500.00"));
+        request.setIdempotencyKey("KEY-2"); // different key, same enrollment already succeeded
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> paymentService.createPayment(request));
+        assertEquals("A successful payment already exists for enrollment '63'.", ex.getMessage());
+    }
+
+    @Test
+    void testCreatePayment_IdempotencyKeyReturnsExistingPayment() {
+        Payment existingPayment = new Payment();
+        existingPayment.setId(301L);
+        existingPayment.setEnrollmentId(64L);
+        existingPayment.setPaymentStatus("SUCCESS");
+        existingPayment.setIdempotencyKey("IDEMP-KEY-99");
+        when(paymentRepository.findByIdempotencyKey("IDEMP-KEY-99")).thenReturn(Optional.of(existingPayment));
+
+        PaymentRequest request = new PaymentRequest();
+        request.setEnrollmentId(64L);
+        request.setIdempotencyKey("IDEMP-KEY-99");
+
+        PaymentResponse response = paymentService.createPayment(request);
+
+        assertNotNull(response);
+        assertEquals(301L, response.getId());
+        assertEquals("SUCCESS", response.getPaymentStatus());
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void testDeletePayment_AdminAllowed() {
+        authenticateAs("admin_user", "ADMIN");
+
+        Payment payment = new Payment();
+        payment.setId(401L);
+        when(paymentRepository.findById(401L)).thenReturn(Optional.of(payment));
+
+        paymentService.deletePayment(401L);
+        verify(paymentRepository).delete(payment);
+    }
 }

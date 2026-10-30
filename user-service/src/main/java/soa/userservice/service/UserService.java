@@ -106,9 +106,15 @@ public class UserService {
         User user = findUserByIdentifier(identifier)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + identifier));
 
-        user.setName(request.getName());
-        user.setPhone(request.getPhone());
-        user.setDepartment(request.getDepartment());
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setName(request.getName());
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getDepartment() != null && !request.getDepartment().isBlank()) {
+            user.setDepartment(request.getDepartment());
+        }
 
         if (request.getStudentId() != null && !request.getStudentId().isBlank()) {
             user.setStudentId(request.getStudentId());
@@ -176,9 +182,17 @@ public class UserService {
     private void checkUserOwnership(String identifier) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-            if (!isAdmin) {
-                String currentUser = auth.getName();
+            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+            if (!isAdmin && auth.getDetails() instanceof io.jsonwebtoken.Claims claims) {
+                Object roleClaim = claims.get("role");
+                if ("ADMIN".equalsIgnoreCase(String.valueOf(roleClaim)) || "ROLE_ADMIN".equalsIgnoreCase(String.valueOf(roleClaim))) {
+                    isAdmin = true;
+                }
+            }
+            if (isAdmin) {
+                return;
+            }
+            String currentUser = auth.getName();
                 if (currentUser != null) {
                     if (currentUser.equalsIgnoreCase(identifier)) {
                         return;
@@ -210,7 +224,6 @@ public class UserService {
                     }
                     throw new AccessDeniedException("Users can only access their own profile");
                 }
-            }
         }
     }
 

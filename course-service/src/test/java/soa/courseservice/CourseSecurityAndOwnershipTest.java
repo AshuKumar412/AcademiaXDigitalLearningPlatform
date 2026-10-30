@@ -140,4 +140,70 @@ class CourseSecurityAndOwnershipTest {
         AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> courseService.getCoursesByInstructor("prof_rahul"));
         assertEquals("Instructors can only view courses they manage", ex.getMessage());
     }
+
+    @Test
+    void testUpdateCourse_AdminCanUpdateAnyCourse() {
+        authenticateAs("admin_user", "ADMIN");
+
+        Course course = new Course();
+        course.setId(2L);
+        course.setTitle("Original Title");
+        course.setInstructorId("prof_rahul");
+        course.setCapacity(20);
+
+        when(courseRepository.findById(2L)).thenReturn(Optional.of(course));
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CourseRequest updateRequest = new CourseRequest();
+        updateRequest.setTitle("Admin Modified Title");
+        updateRequest.setCapacity(50);
+
+        CourseResponse response = courseService.updateCourse(2L, updateRequest);
+
+        assertNotNull(response);
+        assertEquals("Admin Modified Title", response.getTitle());
+        assertEquals(50, response.getCapacity());
+        verify(courseRepository).save(any(Course.class));
+    }
+
+    @Test
+    void testDeleteCourse_AdminCanDeleteAnyCourse() {
+        authenticateAs("admin_user", "ADMIN");
+
+        Course course = new Course();
+        course.setId(3L);
+        course.setTitle("Course To Delete");
+        course.setInstructorId("prof_rahul");
+
+        when(courseRepository.findById(3L)).thenReturn(Optional.of(course));
+
+        courseService.deleteCourse(3L);
+
+        verify(courseRepository).delete(course);
+    }
+
+    @Test
+    void testCreateCourse_AdminCanAssignInstructor() {
+        authenticateAs("admin_user", "ADMIN");
+
+        when(userClient.existsById("prof_assigned")).thenReturn(org.springframework.http.ResponseEntity.ok(true));
+
+        CourseRequest request = new CourseRequest();
+        request.setTitle("Advanced Algorithms");
+        request.setInstructor("Prof. Assigned");
+        request.setInstructorId("prof_assigned");
+        request.setCapacity(45);
+
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> {
+            Course c = inv.getArgument(0);
+            c.setId(102L);
+            return c;
+        });
+
+        CourseResponse response = courseService.createCourse(request);
+
+        assertNotNull(response);
+        assertEquals("prof_assigned", response.getInstructorId());
+        assertEquals("Advanced Algorithms", response.getTitle());
+    }
 }
