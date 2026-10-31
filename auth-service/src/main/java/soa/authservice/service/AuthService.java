@@ -60,12 +60,17 @@ public class AuthService {
             }
         }
 
-        String role = (request.getRole() != null && !request.getRole().isBlank())
-                ? request.getRole().trim().toUpperCase()
-                : "STUDENT";
-
-        if (!role.equals("STUDENT") && !role.equals("INSTRUCTOR") && !role.equals("ADMIN")) {
-            throw new IllegalArgumentException("Role must be STUDENT, INSTRUCTOR, or ADMIN");
+        // Public registration must create STUDENT accounts only
+        String role = "STUDENT";
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            String requestedRole = request.getRole().trim().toUpperCase();
+            if (!requestedRole.equals("STUDENT")) {
+                if (requestedRole.equals("INSTRUCTOR") || requestedRole.equals("ADMIN")) {
+                    throw new IllegalArgumentException("Public registration is restricted to STUDENT accounts only. INSTRUCTOR and ADMIN accounts must be created through secure authorized operations.");
+                } else {
+                    throw new IllegalArgumentException("Role must be STUDENT, INSTRUCTOR, or ADMIN");
+                }
+            }
         }
 
         AuthUser user = new AuthUser();

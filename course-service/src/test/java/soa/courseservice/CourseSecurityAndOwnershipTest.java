@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import soa.courseservice.client.UserClient;
 import soa.courseservice.dto.CourseRequest;
 import soa.courseservice.dto.CourseResponse;
+import soa.courseservice.dto.UserResponse;
 import soa.courseservice.model.Course;
 import soa.courseservice.repository.CourseRepository;
 import soa.courseservice.service.CourseService;
@@ -62,6 +63,13 @@ class CourseSecurityAndOwnershipTest {
         request.setInstructorId("prof_smith");
         request.setCapacity(40);
 
+        // Mock User Service returning the authenticated instructor's details
+        UserResponse instructorUser = new UserResponse();
+        instructorUser.setUserId("prof_rahul");
+        instructorUser.setName("Prof. Rahul Verified");
+        instructorUser.setRole("INSTRUCTOR");
+        when(userClient.getUserById("prof_rahul")).thenReturn(org.springframework.http.ResponseEntity.ok(instructorUser));
+
         when(courseRepository.save(any(Course.class))).thenAnswer(inv -> {
             Course c = inv.getArgument(0);
             c.setId(101L);
@@ -73,6 +81,10 @@ class CourseSecurityAndOwnershipTest {
         assertNotNull(response);
         // Must be bound to prof_rahul, NOT prof_smith!
         assertEquals("prof_rahul", response.getInstructorId());
+        // Name must come from User Service, not request body
+        assertEquals("Prof. Rahul Verified", response.getInstructor());
+        // Verify lookup was for the authenticated user
+        verify(userClient).getUserById("prof_rahul");
     }
 
     @Test
@@ -186,7 +198,12 @@ class CourseSecurityAndOwnershipTest {
     void testCreateCourse_AdminCanAssignInstructor() {
         authenticateAs("admin_user", "ADMIN");
 
-        when(userClient.existsById("prof_assigned")).thenReturn(org.springframework.http.ResponseEntity.ok(true));
+        // Mock User Service returning the instructor's details
+        UserResponse instructorUser = new UserResponse();
+        instructorUser.setUserId("prof_assigned");
+        instructorUser.setName("Prof. Assigned Verified");
+        instructorUser.setRole("INSTRUCTOR");
+        when(userClient.getUserById("prof_assigned")).thenReturn(org.springframework.http.ResponseEntity.ok(instructorUser));
 
         CourseRequest request = new CourseRequest();
         request.setTitle("Advanced Algorithms");
@@ -205,5 +222,8 @@ class CourseSecurityAndOwnershipTest {
         assertNotNull(response);
         assertEquals("prof_assigned", response.getInstructorId());
         assertEquals("Advanced Algorithms", response.getTitle());
+        // Name must come from User Service
+        assertEquals("Prof. Assigned Verified", response.getInstructor());
+        verify(userClient).getUserById("prof_assigned");
     }
 }

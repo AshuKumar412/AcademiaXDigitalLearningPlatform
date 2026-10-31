@@ -3,16 +3,21 @@ package soa.courseservice.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import feign.FeignException;
 import soa.courseservice.client.UserClient;
 import soa.courseservice.dto.CourseRequest;
 import soa.courseservice.dto.CourseResponse;
+import soa.courseservice.dto.UserResponse;
 import soa.courseservice.exception.CourseNotFoundException;
+import soa.courseservice.exception.InstructorValidationException;
+import soa.courseservice.exception.UserServiceUnavailableException;
 import soa.courseservice.model.Course;
 import soa.courseservice.repository.CourseRepository;
 
@@ -27,32 +32,32 @@ public class CourseService {
         this.userClient = userClient;
     }
 
-    // CREATE - validates instructor exists & binds instructorId to authenticated user if INSTRUCTOR
+    // CREATE - validates instructor exists via User Service and has INSTRUCTOR role
     public CourseResponse createCourse(CourseRequest request) {
 
         String instructorId = request.getInstructorId();
 
-        // Enforce instructor identity from authenticated token
+        // If the current user is an INSTRUCTOR, force instructorId to their own identity
         if (isCurrentUserInstructor()) {
             String currentUser = getCurrentUser();
             if (currentUser != null && !currentUser.isBlank()) {
-                instructorId = currentUser; // Override with authenticated instructor ID
+                instructorId = currentUser;
             }
         }
 
-        // Validate instructor exists if instructorId provided
-        if (instructorId != null && !instructorId.isBlank()) {
-            Boolean exists;
-            try {
-                exists = userClient.existsById(instructorId).getBody();
-            } catch (Exception e) {
-                // Feign call logging
-            }
+        // Validate instructorId is present
+        if (instructorId == null || instructorId.isBlank()) {
+            throw new InstructorValidationException(
+                    "instructorId is required when creating a course", 400);
         }
+
+        // Validate instructor via User Service
+        UserResponse instructor = fetchAndValidateInstructor(instructorId);
 
         Course course = new Course();
         course.setTitle(request.getTitle());
-        course.setInstructor(request.getInstructor());
+        // Use the verified name from User Service, not the untrusted request body
+        course.setInstructor(instructor.getName());
         course.setInstructorId(instructorId);
         course.setCapacity(request.getCapacity());
         course.setStatus(request.getStatus() != null ? request.getStatus().toUpperCase() : "OPEN");
@@ -61,6 +66,50 @@ public class CourseService {
 
         Course savedCourse = courseRepository.save(course);
         return convertToResponse(savedCourse);
+    }
+
+    /**
+     * Fetches user details from User Service via Feign and validates:
+     * 1. The user exists (404 if not)
+     * 2. The user has the INSTRUCTOR role (400 if STUDENT or ADMIN)
+     *
+     * @param instructorId the userId to look up in User Service
+     * @return the validated UserResponse with instructor details
+     * @throws InstructorValidationException if the user doesn't exist or is not an INSTRUCTOR
+     * @throws UserServiceUnavailableException if User Service cannot be reached
+     */
+    UserResponse fetchAndValidateInstructor(String instructorId) {
+        ResponseEntity<UserResponse> response;
+        try {
+            response = userClient.getUserById(instructorId);
+        } catch (FeignException.NotFound e) {
+            throw new InstructorValidationException(
+                    "Instructor not found with id: " + instructorId, 404);
+        } catch (FeignException e) {
+            throw new UserServiceUnavailableException(
+                    "User Service is unavailable. Cannot validate instructor. Please try again later.", e);
+        } catch (Exception e) {
+            throw new UserServiceUnavailableException(
+                    "User Service is unavailable. Cannot validate instructor. Please try again later.", e);
+        }
+
+        if (response == null || response.getBody() == null) {
+            throw new InstructorValidationException(
+                    "Instructor not found with id: " + instructorId, 404);
+        }
+
+        UserResponse user = response.getBody();
+
+        // Validate the user has the INSTRUCTOR role
+        String role = user.getRole();
+        if (role == null || !role.trim().equalsIgnoreCase("INSTRUCTOR")) {
+            String actualRole = (role != null) ? role.trim().toUpperCase() : "UNKNOWN";
+            throw new InstructorValidationException(
+                    "User '" + instructorId + "' has role " + actualRole
+                            + " but only users with INSTRUCTOR role can be assigned to courses", 400);
+        }
+
+        return user;
     }
 
     // READ ALL

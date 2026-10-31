@@ -3,8 +3,6 @@ package soa.apigateway.filter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,10 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getRequestURI();
-
-        // Public endpoints limited to: /auth/login, /auth/register, /actuator/health, /gateway/status
-        if (isPublicEndpoint(path)) {
+        // Public endpoints must bypass JWT inspection regardless of Authorization header presence/validity
+        if (isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -137,12 +133,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"" + message + "\"}");
     }
 
-    private boolean isPublicEndpoint(String path) {
-        return path.equals("/auth/login") || path.startsWith("/auth/login/")
-                || path.equals("/auth/register") || path.startsWith("/auth/register/")
-                || path.equals("/actuator/health") || path.startsWith("/actuator/health/")
-                || path.equals("/gateway") || path.startsWith("/gateway/")
-                || path.equals("/gateway/status") || path.startsWith("/gateway/status/");
+    private boolean isPublicEndpoint(HttpServletRequest request) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
+        String path = request.getServletPath();
+        if (path == null || path.isEmpty()) {
+            path = request.getRequestURI();
+        }
+        if (path == null) {
+            return false;
+        }
+
+        String normalizedPath = path.toLowerCase();
+        return normalizedPath.equals("/auth") || normalizedPath.startsWith("/auth/")
+                || normalizedPath.equals("/actuator/health") || normalizedPath.startsWith("/actuator/health/")
+                || normalizedPath.equals("/gateway") || normalizedPath.startsWith("/gateway/");
     }
 
     // Custom wrapper that sanitizes external identity headers and injects trusted gateway headers
